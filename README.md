@@ -1,53 +1,60 @@
-# ConfigLib
+# Configlib
 
-## Overview
-
-ConfigLib is a Python library designed by Brandon Geraci to handle configuration and layering tasks for image files, specifically .qcow2 files. It provides a streamlined and simplified interface for operations such as applying layers, importing layers from Git repositories, listing available layers, and checking for necessary dependencies.
+Configlib is a Python library designed to ease the process of layer-based configuration for virtual machines. The library provides utilities to list, import, and apply configurations based on a recipe file. It is designed to work with a specific repository structure that includes configurations, package lists, and scripts.
 
 ## Installation
 
-The recommended way to install ConfigLib is via pip:
+To install Configlib, add the following to the dependencies section of your project's `pyproject.toml`:
 
-```shell
-pip install configlib
+```toml
+configlib = "^1.0.0"
 ```
 
-Or, if you're using Poetry for dependency management:
+Then run:
 
-```shell
-poetry add configlib
+```bash
+$ pip install -r requirements.txt
 ```
 
 ## Usage
 
-Here's a quick overview of how you can use ConfigLib in your own projects:
+Here's a basic example of how you can use Configlib:
 
 ```python
-from configlib import apply_layers, import_layer, list_layers, check_dependencies
+from configlib.utils import apply_layers
 
-# Check for required dependencies
-check_dependencies()
-
-# Import a layer from a Git repository
-import_layer('https://github.com/username/repo.git')
-
-# List available layers
-list_layers()
-
-# Apply layers from a .toml recipe to a base image
-apply_layers('path/to/base_image.qcow2', 'path/to/recipe.toml', 'path/to/output_image.qcow2', 'python3')
+# Use Configlib to apply layers to a base image
+apply_layers(base_image_path, os_recipe_toml_path, output_image_path, python_version)
 ```
 
-Please note that you may need to adjust file paths and URLs to fit your own use case.
+## Repository Structure
 
-## Contributing
+When using Configlib to manage layers, your repository should follow this structure:
 
-Contributions to ConfigLib are very welcome! Please submit issues and pull requests on our GitHub page.
+```
+my-packer-build/
+├── configs/
+│   ├── bin/
+│   │   └── custom-executable
+│   ├── etc/
+│   │   └── custom-executable.conf
+│   └── usr/local/bin
+│       └── symlink-to-something
+├── package-lists/
+│   ├── rpm-requirements.txt
+│   ├── dpm-requirements.txt
+│   └── pip-requirements.txt
+└── scripts/
+    ├── 01-first-script-to-run.sh
+    └── 02-second-script-to-run.sh
+```
 
-## License
+- `configs/`: This directory is where you put custom config files that go in the root filesystem. Examples can include custom dns, dhcpd, tftp, and other services required for this "layer".
+- `package-lists/`: This directory contains lists for RedHat and Debian packages based on the flavor of Linux. A separate file is included for pip requirements for the system Python.
+- `scripts/`: Scripts are run in alphabetical order. If you number them you can control the order of the scripts.
 
-ConfigLib is released under the MIT License. Please see the `LICENSE` file for more details.
+You can refer to this [os-layer-template](https://github.com/brandonrc/os-layer-template) for a complete template of the repository structure.
 
 ## Contact
 
-For any questions or feedback, please contact Brandon Geraci at [brandon.geraci@gmail.com](mailto:brandon.geraci@gmail.com).
+If you have any issues or questions, feel free to contact me at brandon.geraci@gmail.com.
