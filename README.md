@@ -1,3 +1,5 @@
+[![Lint](https://github.com/brandonrc/osconfiglib/actions/workflows/lint.yml/badge.svg)](https://github.com/brandonrc/osconfiglib/actions/workflows/lint.yml)
+
 # osconfiglib
 
 osconfiglib is a Python library designed to ease the process of layer-based configuration for virtual machines (QCOW2). The library provides utilities to list, import, and apply configurations based on a recipe file. It is designed to work with a specific repository structure that includes configurations, package lists, and scripts.
