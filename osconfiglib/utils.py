@@ -1,4 +1,4 @@
-# File: configlib/utils.py
+# File: osconfiglib/utils.py
 
 import shutil
 

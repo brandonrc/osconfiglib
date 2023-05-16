@@ -1,4 +1,4 @@
-# File: configlib/layers.py
+# File: osconfiglib/layers.py
 
 import os
 import subprocess

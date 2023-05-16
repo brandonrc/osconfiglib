@@ -1,13 +1,13 @@
-# Configlib
+# osconfiglib
 
-Configlib is a Python library designed to ease the process of layer-based configuration for virtual machines. The library provides utilities to list, import, and apply configurations based on a recipe file. It is designed to work with a specific repository structure that includes configurations, package lists, and scripts.
+osconfiglib is a Python library designed to ease the process of layer-based configuration for virtual machines (QCOW2). The library provides utilities to list, import, and apply configurations based on a recipe file. It is designed to work with a specific repository structure that includes configurations, package lists, and scripts.
 
 ## Installation
 
-To install Configlib, add the following to the dependencies section of your project's `pyproject.toml`:
+To install osconfiglib, add the following to the dependencies section of your project's `pyproject.toml`:
 
 ```toml
-configlib = "^1.0.0"
+osconfiglib = "^1.0.0"
 ```
 
 Then run:
@@ -18,21 +18,21 @@ $ pip install -r requirements.txt
 
 ## Usage
 
-Here's a basic example of how you can use Configlib:
+Here's a basic example of how you can use osconfiglib:
 
 ```python
-from configlib.utils import apply_layers
+from osconfiglib.utils import apply_layers
 
-# Use Configlib to apply layers to a base image
+# Use osconfiglib to apply layers to a base image
 apply_layers(base_image_path, os_recipe_toml_path, output_image_path, python_version)
 ```
 
 ## Repository Structure
 
-When using Configlib to manage layers, your repository should follow this structure:
+When using osconfiglib to manage layers, your repository should follow this structure:
 
 ```
-my-packer-build/
+my-build/
 ├── configs/
 │   ├── bin/
 │   │   └── custom-executable
