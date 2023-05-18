@@ -9,6 +9,7 @@ import toml
 from pathlib import Path
 
 from shutil import copy2
+import shutil
 from pathlib import Path
 from urllib.parse import urlparse
 import re
@@ -168,10 +169,54 @@ def validate_git_url(url):
     # if neither check passed, the URL is invalid
     return False
 
+def validate_layer_structure(layer_path):
+    """
+    Validate the structure of a layer directory.
+
+    Args:
+        layer_path (str): Path to the layer directory
+
+    Returns:
+        bool: True if the layer structure is valid, False otherwise
+    """
+    expected_dirs = ['configs', 'package-lists', 'scripts']
+    expected_files = {
+        'package-lists': ['dpm-requirments.txt', 'pip-requirments.txt', 'rpm-requirments.txt'],
+    }
+
+    # Check if the required directories exist
+    for dir_name in expected_dirs:
+        if not os.path.isdir(os.path.join(layer_path, dir_name)):
+            print(f"Directory '{dir_name}' is missing in the layer")
+            return False
+
+    # Check if the required files exist
+    for dir_name, file_names in expected_files.items():
+        for file_name in file_names:
+            if not os.path.isfile(os.path.join(layer_path, dir_name, file_name)):
+                print(f"File '{file_name}' is missing in the '{dir_name}' directory of the layer")
+                return False
+
+    return True
+
+def delete_layer_if_invalid(layer_path):
+    """
+    Delete the layer directory if its structure is invalid.
+
+    Args:
+        layer_path (str): Path to the layer directory
+    """
+    if not validate_layer_structure(layer_path):
+        print(f"Deleting invalid layer: {layer_path}")
+        shutil.rmtree(layer_path)
+        return True
+    # Returns false if we did not delete the layer. 
+    return False
+
 def import_layer(repo_url, branch='main'):
     """
     Import a layer from a git repository. The layer will be stored in a local
-    cache directory (~/.config/osconfiglib/). Each repository and branch combination
+    cache directory (~/.cache/osconfiglib/). Each repository and branch combination
     will be stored in a separate directory.
 
     Args:
@@ -196,8 +241,8 @@ def import_layer(repo_url, branch='main'):
     path_parts = parsed_url.path.strip('/').split('/')
     owner = '-'.join(path_parts[:-1])  # Combine all groups into one string
     repo_name = path_parts[-1].replace('.git', '')  # The repository name is the last part
-    cache_dir = os.path.expanduser(f"~/.config/osconfiglib/{host}-{owner}-{repo_name}-{branch}")
-
+    cache_dir = os.path.expanduser(f"~/.cache/osconfiglib/{host}-{owner}-{repo_name}-{branch}")
+    print(cache_dir)
     if os.path.exists(cache_dir):
         print(f"Layer '{repo_name}' from '{owner}' on branch '{branch}' is already imported.")
         return False
@@ -207,11 +252,15 @@ def import_layer(repo_url, branch='main'):
     if result.returncode != 0:
         print(f"Branch '{branch}' not found, trying with 'master' branch...")
         branch = 'master'
-        cache_dir = os.path.expanduser(f"~/.config/osconfiglib/{host}-{owner}-{repo_name}-{branch}")
+        cache_dir = os.path.expanduser(f"~/.cache/osconfiglib/{host}-{owner}-{repo_name}-{branch}")
         if os.path.exists(cache_dir):
             print(f"Layer '{repo_name}' from '{owner}' on branch '{branch}' is already imported.")
             return True
         subprocess.run(['git', 'clone', '--branch', branch, repo_url, cache_dir], check=True)
+    if delete_layer_if_invalid(cache_dir):
+        print(f"Deleting the folder '{cache_dir}' because it was not valid Need to follow the layer file structure")
+        print("I need to find that URL and put it here...")
+        return False
     print(f"Layer '{repo_name}' from '{owner}' on branch '{branch}' imported successfully.")
     return True
 
