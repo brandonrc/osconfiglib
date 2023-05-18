@@ -8,6 +8,7 @@ version = "v0.1.4"
 description = "Library for image configuration"
 authors = ["Brandon Geraci <brandon.geraci@gmail.com>"]
 license = "MIT"
+readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.7"
