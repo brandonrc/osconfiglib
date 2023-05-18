@@ -40,7 +40,20 @@ cli.add_command(add_file, name='add-file')
 def create_layer(layer_name):
     # Here you would call the functionality that creates a new layer
     click.echo(f'Creating new layer {layer_name}.')
-cli.add_command(create_layer, name='create')
+    layers.create_layer(layer_name=layer_name)
+cli.add_command(create_layer, name='create-layer')
+
+@click.command()
+@click.argument('url')
+@click.argument('branch', required=False, default="main")
+def import_layer(url, branch):
+    # Here you would call the functionality that creates a new layer
+    click.echo(f'Importing layer from url: {url}.')
+    if branch == 'main':
+        layers.import_layer(repo_url=url)
+    else:
+        layers.import_layer(repo_url=url,branch=branch)
+cli.add_command(import_layer, name='import-layer')
 
 @click.command()
 @click.argument('layer_name')

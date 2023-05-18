@@ -147,7 +147,7 @@ def list_layers():
                 git_url = subprocess.getoutput(f'git -C {item} config --get remote.origin.url')
                 print(f'{item.name:<20} {git_url:<20}')
 
-def import_layer(name, repo_url, branch='main'):
+def import_layer(repo_url, branch='main'):
     """
     Import a layer from a git repository. The layer will be stored in a local
     cache directory (~/.config/osconfiglib/). Each repository and branch combination
@@ -161,13 +161,22 @@ def import_layer(name, repo_url, branch='main'):
     Returns:
         None
     """
-    parsed_url = urlparse(repo_url)
+    # parsed_url = urlparse(repo_url)
+    # host = parsed_url.netloc
+    # user_repo = parsed_url.path.lstrip('/')  # remove leading '/'
+    parsed_url = urllib.parse.urlparse(repo_url)
+
+    # Extract the host
     host = parsed_url.netloc
-    user_repo = parsed_url.path.lstrip('/')  # remove leading '/'
-    cache_dir = os.path.expanduser(f"~/.config/osconfiglib/{host}-{user_repo}-{branch}")
+
+    # Extract the owner and repository name
+    path_parts = parsed_url.path.strip('/').split('/')
+    owner = '-'.join(path_parts[:-1])  # Combine all groups into one string
+    repo_name = path_parts[-1].replace('.git', '')  # The repository name is the last part
+    cache_dir = os.path.expanduser(f"~/.config/osconfiglib/{host}-{owner}-{repo_name}-{branch}")
 
     if os.path.exists(cache_dir):
-        print(f"Layer '{name}' from branch '{branch}' is already imported.")
+        print(f"Layer '{repo_name}' from '{owner}' on branch '{branch}' is already imported.")
         return
 
     print(f"Cloning repository '{repo_url}' branch '{branch}' into '{cache_dir}'...")
@@ -175,12 +184,12 @@ def import_layer(name, repo_url, branch='main'):
     if result.returncode != 0:
         print(f"Branch '{branch}' not found, trying with 'master' branch...")
         branch = 'master'
-        cache_dir = os.path.expanduser(f"~/.config/osconfiglib/{host}-{user_repo}-{branch}")
+        cache_dir = os.path.expanduser(f"~/.config/osconfiglib/{host}-{owner}-{repo_name}-{branch}")
         if os.path.exists(cache_dir):
-            print(f"Layer '{name}' from branch '{branch}' is already imported.")
+            print(f"Layer '{repo_name}' from '{owner}' on branch '{branch}' is already imported.")
             return
         subprocess.run(['git', 'clone', '--branch', branch, repo_url, cache_dir], check=True)
-    print(f"Layer '{name}' from branch '{branch}' imported successfully.")
+    print(f"Layer '{repo_name}' from '{owner}' on branch '{branch}' imported successfully.")
 
 
 def apply_layers(base_image, os_recipe_toml, output_image, python_version):
