@@ -10,19 +10,32 @@ from pathlib import Path
 
 
 def get_requirements_files(layer, file_name):
+    """
+    Get the content of the requirement file in the given layer.
+    
+    Args:
+        layer (str): Path to the layer directory
+        file_name (str): Name of the requirement file
+
+    Returns:
+        list: List of requirements
+    """
     file_path = os.path.join(layer, 'package-lists', file_name)
     if os.path.exists(file_path):
         with open(file_path, 'r') as file:
             return [line.strip() for line in file if line.strip() and not line.startswith('#')]
     return []
 
+
 def list_layers():
-    # Get the current user's home directory
-    home_dir = Path.home()
+    """
+    List all layers stored locally in the 'layers' directory and in the cache directory.
+    """
+    # Define the path of directories
+    home_dir = Path.home()  # User's home directory
+    cache_dir = home_dir / ".cache" / "myapp"  # Cache directory
 
-    # Define the cache directory path
-    cache_dir = home_dir / ".cache" / "myapp"
-
+    # Header for the output
     print(f"{'Layer Name':<20} {'Source':<20}")
 
     # List layers in the 'layers' directory
@@ -40,15 +53,20 @@ def list_layers():
                 git_url = subprocess.getoutput(f'git -C {item} config --get remote.origin.url')
                 print(f'{item.name:<20} {git_url:<20}')
 
+
 def import_layer(git_url):
+    """
+    Clone a git repository and store it in the cache directory.
+
+    Args:
+        git_url (str): URL of the git repository to clone
+    """
     # Parse the name of the repository from the URL
     layer_name = urllib.parse.urlparse(git_url).path.strip('/').split('/')[-1]
 
-    # Get the current user's home directory
-    home_dir = Path.home()
-
-    # Define the cache directory path
-    cache_dir = home_dir / ".cache" / "myapp"
+    # Define the path of directories
+    home_dir = Path.home()  # User's home directory
+    cache_dir = home_dir / ".cache" / "myapp"  # Cache directory
 
     # Create the cache directory if it doesn't exist
     cache_dir.mkdir(parents=True, exist_ok=True)
@@ -56,28 +74,35 @@ def import_layer(git_url):
     # Define the local path where the repository should be cloned
     local_layer_path = cache_dir / layer_name
 
+    # Clone the repository or pull the latest changes if it's already cloned
     if not local_layer_path.exists():
-        # If the repository isn't already cloned, clone it
         subprocess.run(['git', 'clone', git_url, local_layer_path])
     else:
-        # If the repository is already cloned, pull the latest changes
         subprocess.run(['git', '-C', local_layer_path, 'pull'])
 
+
 def apply_layers(base_image, os_recipe_toml, output_image, python_version):
+    """
+    Apply layers of configurations to a base image.
+
+    Args:
+        base_image (str): Path to the base image file
+        os_recipe_toml (str): Path to the TOML recipe file
+        output_image (str): Path to the output image file
+        python_version (str): Python version used for virtual environment
+    """
+    # Load the recipe from the TOML file
     with open(os_recipe_toml, 'r') as file:
         recipe = toml.load(file)
-        
+
+    # Initialize lists of requirements
     rpm_requirements = []
     deb_requirements = []
     pip_requirements = []
 
-    config_layers = recipe['layers']
-
-    # Get the current user's home directory
-    home_dir = Path.home()
-
-    # Define the cache directory path
-    cache_dir = home_dir / ".cache" / "myapp"
+    # Define the path of directories
+    home_dir = Path.home()  # User's home directory
+    cache_dir = home_dir / ".cache" / "myapp"  # Cache directory
 
     # Create the cache directory if it doesn't exist
     cache_dir.mkdir(parents=True, exist_ok=True)
@@ -85,9 +110,12 @@ def apply_layers(base_image, os_recipe_toml, output_image, python_version):
     # Extract the layers from the recipe
     config_layers = recipe['layers']
 
+    # Use a temporary file for the tarball
     with tempfile.NamedTemporaryFile(suffix=".tar.gz") as temp_file:
         with tarfile.open(temp_file.name, "w:gz") as tar:
+            # Iterate over layers and apply configurations
             for layer in config_layers:
+                # Handle git layer type
                 if layer['type'] == 'git':
                     layer_name = urllib.parse.urlparse(layer['url']).path.strip('/').split('/')[-1]
                     local_layer_path = os.path.join(cache_dir, layer_name)
@@ -96,33 +124,34 @@ def apply_layers(base_image, os_recipe_toml, output_image, python_version):
                     else:
                         subprocess.run(['git', '-C', local_layer_path, 'pull'])
                     layer_path = local_layer_path
-                else:
+                else:  # For local layer type
                     layer_path = os.path.join('layers', layer['name'])
 
+                # Append requirements to the lists
                 rpm_requirements += get_requirements_files(layer_path, 'rpm-requirements.txt')
                 deb_requirements += get_requirements_files(layer_path, 'dpm-requirements.txt')
                 pip_requirements += get_requirements_files(layer_path, 'pip-requirements.txt')
 
+                # Add configs to the tarball
                 config_dir = os.path.join(layer_path, 'configs')
                 if not os.path.exists(config_dir):
                     print(f"Config directory not found in layer: {layer['name']}")
                     continue
-
                 tar.add(config_dir, arcname=f'{layer["name"]}')
 
+        # Upload the tarball and extract it in the base image
         subprocess.run(['virt-customize', '-a', base_image, '--upload', f'{temp_file.name}:/'])
         subprocess.run(['virt-customize', '-a', base_image, '--run-command', f'tar xzf /{os.path.basename(temp_file.name)} -C /'])
 
-
+    # Install rpm and deb packages, and pip requirements in the base image
     if rpm_requirements:
         subprocess.run(['virt-customize', '-a', base_image, '--run-command', f'dnf install -y {" ".join(rpm_requirements)}'])
-
     if deb_requirements:
         subprocess.run(['virt-customize', '-a', base_image, '--run-command', f'apt-get install -y {" ".join(deb_requirements)}'])
-
     if pip_requirements:
         subprocess.run(['virt-customize', '-a', base_image, '--run-command', f'{python_version} -m venv /opt/os-python-venv'])
         subprocess.run(['virt-customize', '-a', base_image, '--run-command', f'source /opt/os-python-venv/bin/activate && pip install {" ".join(pip_requirements)}'])
         subprocess.run(['virt-customize', '-a', base_image, '--run-command', 'chmod -R 777 /opt/os-python-venv'])
 
+    # Copy the base image to the output image
     subprocess.run(['cp', base_image, output_image])
