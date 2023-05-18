@@ -11,6 +11,7 @@ from pathlib import Path
 from shutil import copy2
 from pathlib import Path
 from urllib.parse import urlparse
+import re
 
 
 def add_file_to_layer(layer_name, source_file_path, destination_path):
@@ -148,6 +149,25 @@ def list_layers():
                 git_url = subprocess.getoutput(f'git -C {item} config --get remote.origin.url')
                 print(f'{item.name:<20} {git_url:<20}')
 
+def validate_git_url(url):
+    # regex for matching SSH URLs
+    ssh_pattern = re.compile(r"^(git@|ssh:\/\/git@)([\w\.@:\/~-]|(%[0-9a-fA-F]{2}))*$")
+
+    # first, check if the URL is an HTTP(S) URL
+    try:
+        result = urlparse(url)
+        if all([result.scheme in ['http', 'https'], result.netloc, result.path]):
+            return True
+    except ValueError:
+        pass
+
+    # if it's not an HTTP(S) URL, check if it's an SSH URL
+    if ssh_pattern.match(url):
+        return True
+
+    # if neither check passed, the URL is invalid
+    return False
+
 def import_layer(repo_url, branch='main'):
     """
     Import a layer from a git repository. The layer will be stored in a local
@@ -162,11 +182,13 @@ def import_layer(repo_url, branch='main'):
     Returns:
         None
     """
-    # parsed_url = urlparse(repo_url)
-    # host = parsed_url.netloc
-    # user_repo = parsed_url.path.lstrip('/')  # remove leading '/'
+    # Checking to see if the URL is valid
+    if not validate_git_url(repo_url):
+        print(f"Url '{repo_url}' is not valid")
+        return False
+    
     parsed_url = urllib.parse.urlparse(repo_url)
-
+    
     # Extract the host
     host = parsed_url.netloc
 
@@ -178,7 +200,7 @@ def import_layer(repo_url, branch='main'):
 
     if os.path.exists(cache_dir):
         print(f"Layer '{repo_name}' from '{owner}' on branch '{branch}' is already imported.")
-        return
+        return False
 
     print(f"Cloning repository '{repo_url}' branch '{branch}' into '{cache_dir}'...")
     result = subprocess.run(['git', 'clone', '--branch', branch, repo_url, cache_dir], check=False)
@@ -188,9 +210,10 @@ def import_layer(repo_url, branch='main'):
         cache_dir = os.path.expanduser(f"~/.config/osconfiglib/{host}-{owner}-{repo_name}-{branch}")
         if os.path.exists(cache_dir):
             print(f"Layer '{repo_name}' from '{owner}' on branch '{branch}' is already imported.")
-            return
+            return True
         subprocess.run(['git', 'clone', '--branch', branch, repo_url, cache_dir], check=True)
     print(f"Layer '{repo_name}' from '{owner}' on branch '{branch}' imported successfully.")
+    return True
 
 
 def apply_layers(base_image, os_recipe_toml, output_image, python_version):

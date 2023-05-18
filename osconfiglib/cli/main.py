@@ -53,9 +53,11 @@ def import_layer(url, branch):
     # Here you would call the functionality that creates a new layer
     click.echo(f'Importing layer from url: {url}.')
     if branch == 'main':
-        layers.import_layer(repo_url=url)
+        if not layers.import_layer(repo_url=url):
+            exit(1)
     else:
-        layers.import_layer(repo_url=url,branch=branch)
+        if not layers.import_layer(repo_url=url,branch=branch):
+            exit(1)
 cli.add_command(import_layer, name='import-layer')
 
 @click.command()
