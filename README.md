@@ -2,7 +2,7 @@
 
 # osconfiglib
 
-osconfiglib is a Python library designed to ease the process of layer-based configuration for virtual machines (QCOW2). The library provides utilities to list, import, and apply configurations based on a recipe file. It is designed to work with a specific repository structure that includes configurations, package lists, and scripts.
+osconfiglib is a Python library designed to ease the process of layer-based configuration for virtual machines (QCOW2). The library provides utilities to manage layers, apply configurations, and includes a CLI tool for easy management.
 
 ## Installation
 
@@ -23,10 +23,34 @@ $ pip install -r requirements.txt
 Here's a basic example of how you can use osconfiglib:
 
 ```python
-from osconfiglib.utils import apply_layers
+from osconfiglib.layers import apply_layers
 
 # Use osconfiglib to apply layers to a base image
 apply_layers(base_image_path, os_recipe_toml_path, output_image_path, python_version)
+```
+
+### CLI Usage
+
+osconfiglib also includes a CLI tool to manage your layers. Here are some examples of how to use it:
+
+```bash
+# List all layers
+$ osconfiglib-cli list layers
+
+# Check version
+$ osconfiglib-cli --version
+
+# Add RPM to a layer
+$ osconfiglib-cli add rpm mylayer tmux
+
+# Add a file to a layer
+$ osconfiglib-cli add file mylayer ~/.tmux.conf /home/user
+
+# Create a new layer
+$ osconfiglib-cli create layer newLayer
+
+# Delete a layer
+$ osconfiglib-cli delete layer <layer>
 ```
 
 ## Repository Structure
@@ -56,6 +80,16 @@ my-build/
 - `scripts/`: Scripts are run in alphabetical order. If you number them you can control the order of the scripts.
 
 You can refer to this [os-layer-template](https://github.com/brandonrc/os-layer-template) for a complete template of the repository structure.
+
+
+## Developing
+
+To run the test suite, install the dev dependencies and run pytest:
+
+```bash
+$ pip install -r dev-requirements.txt
+$ pytest
+```
 
 ## Contact
 

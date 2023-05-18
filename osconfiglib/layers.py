@@ -10,6 +10,8 @@ from pathlib import Path
 
 from shutil import copy2
 from pathlib import Path
+from urllib.parse import urlparse
+
 
 def add_file_to_layer(layer_name, source_file_path, destination_path):
     """
@@ -145,32 +147,40 @@ def list_layers():
                 git_url = subprocess.getoutput(f'git -C {item} config --get remote.origin.url')
                 print(f'{item.name:<20} {git_url:<20}')
 
-
-def import_layer(git_url):
+def import_layer(name, repo_url, branch='main'):
     """
-    Clone a git repository and store it in the cache directory.
+    Import a layer from a git repository. The layer will be stored in a local
+    cache directory (~/.config/myapp/). Each repository and branch combination
+    will be stored in a separate directory.
 
     Args:
-        git_url (str): URL of the git repository to clone
+        name: The name of the layer.
+        repo_url: The URL of the git repository.
+        branch: The branch of the repository to import. Default is 'main'.
+
+    Returns:
+        None
     """
-    # Parse the name of the repository from the URL
-    layer_name = urllib.parse.urlparse(git_url).path.strip('/').split('/')[-1]
+    parsed_url = urlparse(repo_url)
+    host = parsed_url.netloc
+    user_repo = parsed_url.path.lstrip('/')  # remove leading '/'
+    cache_dir = os.path.expanduser(f"~/.config/myapp/{host}-{user_repo}-{branch}")
 
-    # Define the path of directories
-    home_dir = Path.home()  # User's home directory
-    cache_dir = home_dir / ".cache" / "myapp"  # Cache directory
+    if os.path.exists(cache_dir):
+        print(f"Layer '{name}' from branch '{branch}' is already imported.")
+        return
 
-    # Create the cache directory if it doesn't exist
-    cache_dir.mkdir(parents=True, exist_ok=True)
-
-    # Define the local path where the repository should be cloned
-    local_layer_path = cache_dir / layer_name
-
-    # Clone the repository or pull the latest changes if it's already cloned
-    if not local_layer_path.exists():
-        subprocess.run(['git', 'clone', git_url, local_layer_path])
-    else:
-        subprocess.run(['git', '-C', local_layer_path, 'pull'])
+    print(f"Cloning repository '{repo_url}' branch '{branch}' into '{cache_dir}'...")
+    result = subprocess.run(['git', 'clone', '--branch', branch, repo_url, cache_dir], check=False)
+    if result.returncode != 0:
+        print(f"Branch '{branch}' not found, trying with 'master' branch...")
+        branch = 'master'
+        cache_dir = os.path.expanduser(f"~/.config/myapp/{host}-{user_repo}-{branch}")
+        if os.path.exists(cache_dir):
+            print(f"Layer '{name}' from branch '{branch}' is already imported.")
+            return
+        subprocess.run(['git', 'clone', '--branch', branch, repo_url, cache_dir], check=True)
+    print(f"Layer '{name}' from branch '{branch}' imported successfully.")
 
 
 def apply_layers(base_image, os_recipe_toml, output_image, python_version):
@@ -209,15 +219,16 @@ def apply_layers(base_image, os_recipe_toml, output_image, python_version):
             for layer in config_layers:
                 # Handle git layer type
                 if layer['type'] == 'git':
-                    layer_name = urllib.parse.urlparse(layer['url']).path.strip('/').split('/')[-1]
-                    local_layer_path = os.path.join(cache_dir, layer_name)
+                    parsed_url = urlparse(layer['url'])
+                    host = parsed_url.netloc
+                    user_repo = parsed_url.path.lstrip('/')
+                    branch = layer['branch_or_tag']
+                    local_layer_path = os.path.join(cache_dir, f"{host}-{user_repo}-{branch}")
                     if not os.path.exists(local_layer_path):
-                        subprocess.run(['git', 'clone', '-b', layer['branch_or_tag'], layer['url'], local_layer_path])
+                        subprocess.run(['git', 'clone', '--branch', branch, layer['url'], local_layer_path])
                     else:
-                        subprocess.run(['git', '-C', local_layer_path, 'pull'])
+                        print(f"Layer '{user_repo}' from branch '{branch}' is already imported.")
                     layer_path = local_layer_path
-                else:  # For local layer type
-                    layer_path = os.path.join('layers', layer['name'])
 
                 # Append requirements to the lists
                 rpm_requirements += get_requirements_files(layer_path, 'rpm-requirements.txt')
