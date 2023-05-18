@@ -39,8 +39,11 @@ cli.add_command(add_file, name='add-file')
 @click.argument('layer_name')
 def create_layer(layer_name):
     # Here you would call the functionality that creates a new layer
-    click.echo(f'Creating new layer {layer_name}.')
-    layers.create_layer(layer_name=layer_name)
+    
+    if layers.create_layer(layer_name=layer_name):
+        click.echo(f'Creating new layer {layer_name}.')
+    else:
+        exit(1)
 cli.add_command(create_layer, name='create-layer')
 
 @click.command()

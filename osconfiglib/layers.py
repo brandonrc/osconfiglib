@@ -88,7 +88,7 @@ def create_layer(layer_name):
     # Check if the layer already exists
     if layer_dir.exists():
         print(f"A layer named {layer_name} already exists.")
-        return
+        return False
 
     # Create the layer directory and the necessary subdirectories
     layer_dir.mkdir(parents=True)
@@ -102,6 +102,7 @@ def create_layer(layer_name):
             pass
 
     print(f"Layer {layer_name} created successfully.")
+    return True
 
 def get_requirements_files(layer, file_name):
     """
