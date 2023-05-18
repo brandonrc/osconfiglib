@@ -10,9 +10,18 @@ authors = ["Brandon Geraci <brandon.geraci@gmail.com>"]
 license = "MIT"
 readme = "README.md"
 
+[tool.poetry.dev-dependencies]
+pytest = "^6.2"
+
 [tool.poetry.dependencies]
 python = "^3.7"
 toml = "^0.10.2"
 
+[tool.poetry.scripts]
+osconfiglib = 'osconfiglib.cli.main:main'
+
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

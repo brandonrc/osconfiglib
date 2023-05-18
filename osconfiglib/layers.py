@@ -8,6 +8,98 @@ import urllib.parse
 import toml
 from pathlib import Path
 
+from shutil import copy2
+from pathlib import Path
+
+def add_file_to_layer(layer_name, source_file_path, destination_path):
+    """
+    Add a file to the specified layer.
+
+    Args:
+        layer_name (str): Name of the layer to which the file should be added.
+        source_file_path (str): The path to the file on the local file system that should be added to the layer.
+        destination_path (str): The destination path in the layer's config directory where the file should be placed.
+    """
+
+    # Convert the paths to Path objects to handle file paths more easily
+    source_file_path = Path(source_file_path)
+    destination_path = Path(destination_path)
+
+    # Verify that the source file exists
+    if not source_file_path.exists():
+        print(f"The file {source_file_path} does not exist.")
+        return
+
+    # Verify that the source file is a file
+    if not source_file_path.is_file():
+        print(f"{source_file_path} is not a file.")
+        return
+
+    layer_dir = Path.home() / ".cache" / "myapp" / layer_name / "configs"
+
+    # Check if the layer exists
+    if not layer_dir.exists():
+        print(f"A layer named {layer_name} does not exist.")
+        return
+
+    # Create the destination directory in the layer's config directory, if it doesn't exist
+    (layer_dir / destination_path).mkdir(parents=True, exist_ok=True)
+
+    # Copy the source file to the destination directory in the layer's config directory
+    copy2(source_file_path, layer_dir / destination_path / source_file_path.name)
+
+    print(f"File {source_file_path.name} added to layer {layer_name} successfully.")
+
+
+def add_package_to_layer(layer_name, package_type, package_name):
+    """
+    Add a new package to the specified layer.
+
+    Args:
+        layer_name (str): Name of the layer to edit
+        package_type (str): Type of the package ("rpm", "dpm", or "pip")
+        package_name (str): Name of the package to add
+    """
+    layer_dir = Path.home() / ".cache" / "myapp" / layer_name
+
+    # Check if the layer exists
+    if not layer_dir.exists():
+        print(f"A layer named {layer_name} does not exist.")
+        return
+
+    # Open the package list file and add the new package
+    package_list_file = layer_dir / "package-lists" / f"{package_type}-requirements.txt"
+    with open(package_list_file, 'a') as file:
+        file.write(package_name + '\n')
+
+    print(f"Package {package_name} added to layer {layer_name} successfully.")
+
+def create_layer(layer_name):
+    """
+    Create a new layer in the local cache with the specified name.
+
+    Args:
+        layer_name (str): Name of the layer to create
+    """
+    layer_dir = Path.home() / ".cache" / "myapp" / layer_name
+
+    # Check if the layer already exists
+    if layer_dir.exists():
+        print(f"A layer named {layer_name} already exists.")
+        return
+
+    # Create the layer directory and the necessary subdirectories
+    layer_dir.mkdir(parents=True)
+    (layer_dir / "configs").mkdir()
+    (layer_dir / "package-lists").mkdir()
+    (layer_dir / "scripts").mkdir()
+
+    # Create the package list files
+    for package_type in ["rpm", "dpm", "pip"]:
+        with open(layer_dir / "package-lists" / f"{package_type}-requirements.txt", 'w') as file:
+            pass
+
+    print(f"Layer {layer_name} created successfully.")
 
 def get_requirements_files(layer, file_name):
     """
