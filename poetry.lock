@@ -1,0 +1,17 @@
+[[package]]
+name = "osconfiglib"
+version = "0.1.0"
+description = "Library for image configuration"
+category = "main"
+optional = false
+python-versions = "^3.7"
+
+[package.dependencies]
+python = "^3.7"
+toml = "^0.10.2"
+
+[package.dev-dependencies]
+pytest = "^5.2"
+
+[metadata]
+lock-version = "1.1"
