@@ -37,7 +37,7 @@ def add_file_to_layer(layer_name, source_file_path, destination_path):
         print(f"{source_file_path} is not a file.")
         return
 
-    layer_dir = Path.home() / ".cache" / "myapp" / layer_name / "configs"
+    layer_dir = Path.home() / ".cache" / "osconfiglib" / layer_name / "configs"
 
     # Check if the layer exists
     if not layer_dir.exists():
@@ -62,7 +62,7 @@ def add_package_to_layer(layer_name, package_type, package_name):
         package_type (str): Type of the package ("rpm", "dpm", or "pip")
         package_name (str): Name of the package to add
     """
-    layer_dir = Path.home() / ".cache" / "myapp" / layer_name
+    layer_dir = Path.home() / ".cache" / "osconfiglib" / layer_name
 
     # Check if the layer exists
     if not layer_dir.exists():
@@ -83,7 +83,7 @@ def create_layer(layer_name):
     Args:
         layer_name (str): Name of the layer to create
     """
-    layer_dir = Path.home() / ".cache" / "myapp" / layer_name
+    layer_dir = Path.home() / ".cache" / "osconfiglib" / layer_name
 
     # Check if the layer already exists
     if layer_dir.exists():
@@ -127,7 +127,7 @@ def list_layers():
     """
     # Define the path of directories
     home_dir = Path.home()  # User's home directory
-    cache_dir = home_dir / ".cache" / "myapp"  # Cache directory
+    cache_dir = home_dir / ".cache" / "osconfiglib"  # Cache directory
 
     # Header for the output
     print(f"{'Layer Name':<20} {'Source':<20}")
@@ -150,7 +150,7 @@ def list_layers():
 def import_layer(name, repo_url, branch='main'):
     """
     Import a layer from a git repository. The layer will be stored in a local
-    cache directory (~/.config/myapp/). Each repository and branch combination
+    cache directory (~/.config/osconfiglib/). Each repository and branch combination
     will be stored in a separate directory.
 
     Args:
@@ -164,7 +164,7 @@ def import_layer(name, repo_url, branch='main'):
     parsed_url = urlparse(repo_url)
     host = parsed_url.netloc
     user_repo = parsed_url.path.lstrip('/')  # remove leading '/'
-    cache_dir = os.path.expanduser(f"~/.config/myapp/{host}-{user_repo}-{branch}")
+    cache_dir = os.path.expanduser(f"~/.config/osconfiglib/{host}-{user_repo}-{branch}")
 
     if os.path.exists(cache_dir):
         print(f"Layer '{name}' from branch '{branch}' is already imported.")
@@ -175,7 +175,7 @@ def import_layer(name, repo_url, branch='main'):
     if result.returncode != 0:
         print(f"Branch '{branch}' not found, trying with 'master' branch...")
         branch = 'master'
-        cache_dir = os.path.expanduser(f"~/.config/myapp/{host}-{user_repo}-{branch}")
+        cache_dir = os.path.expanduser(f"~/.config/osconfiglib/{host}-{user_repo}-{branch}")
         if os.path.exists(cache_dir):
             print(f"Layer '{name}' from branch '{branch}' is already imported.")
             return
@@ -204,7 +204,7 @@ def apply_layers(base_image, os_recipe_toml, output_image, python_version):
 
     # Define the path of directories
     home_dir = Path.home()  # User's home directory
-    cache_dir = home_dir / ".cache" / "myapp"  # Cache directory
+    cache_dir = home_dir / ".cache" / "osconfiglib"  # Cache directory
 
     # Create the cache directory if it doesn't exist
     cache_dir.mkdir(parents=True, exist_ok=True)
