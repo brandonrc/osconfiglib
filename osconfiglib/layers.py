@@ -265,78 +265,107 @@ def import_layer(repo_url, branch='main'):
     return True
 
 
-def apply_layers(base_image, os_recipe_toml, output_image, python_version):
+def squash_layers(layers):
     """
-    Apply layers of configurations to a base image.
+    Combine multiple layers into a single layer (squashed layer).
+
+    Args:
+        layers (list): List of layers
+    """
+    squashed_layer = {
+        'rpm_requirements': [],
+        'deb_requirements': [],
+        'pip_requirements': [],
+        'configs': [],
+        'squash_script': "#!/bin/bash\n\n"
+                          "trap 'echo \"Error occurred in ${FUNCNAME[1]}\"; exit 1' ERR\n"
+    }
+
+    # Iterate over layers and squash configurations
+    for layer in layers:
+        # Append requirements to the lists
+        squashed_layer['rpm_requirements'] += get_requirements_files(layer_path, 'rpm-requirements.txt')
+        squashed_layer['deb_requirements'] += get_requirements_files(layer_path, 'dpm-requirements.txt')
+        squashed_layer['pip_requirements'] += get_requirements_files(layer_path, 'pip-requirements.txt')
+
+        # Combine configs into the squashed layer
+        config_dir = os.path.join(layer_path, 'configs')
+        if os.path.exists(config_dir):
+            squashed_layer['configs'].append(config_dir)
+
+        # Combine scripts into the squashed layer
+        script_dir = os.path.join(layer_path, 'scripts')
+        if os.path.exists(script_dir):
+            for script in os.listdir(script_dir):
+                with open(os.path.join(script_dir, script), 'r') as file:
+                    # Strip comments and add layer/script info
+                    stripped_script = "\n".join(line for line in file if not line.startswith("#"))
+                    squashed_layer['squash_script'] += f"\n# {layer['name']} {script}\n"
+                    squashed_layer['squash_script'] += f"function {layer['name']}_{script.replace('.', '_')}() {{\n"
+                    squashed_layer['squash_script'] += stripped_script + "\n}\n"
+                    squashed_layer['squash_script'] += f"{layer['name']}_{script.replace('.', '_')}\n"
+
+    return squashed_layer
+
+def apply_squashed_layer(base_image, squashed_layer, python_version):
+    """
+    Apply a squashed layer of configurations to a base image.
 
     Args:
         base_image (str): Path to the base image file
-        os_recipe_toml (str): Path to the TOML recipe file
-        output_image (str): Path to the output image file
+        squashed_layer (dict): Squashed layer of configurations
         python_version (str): Python version used for virtual environment
     """
-    # Load the recipe from the TOML file
-    with open(os_recipe_toml, 'r') as file:
-        recipe = toml.load(file)
-
-    # Initialize lists of requirements
-    rpm_requirements = []
-    deb_requirements = []
-    pip_requirements = []
-
-    # Define the path of directories
-    home_dir = Path.home()  # User's home directory
-    cache_dir = home_dir / ".cache" / "osconfiglib"  # Cache directory
-
-    # Create the cache directory if it doesn't exist
-    cache_dir.mkdir(parents=True, exist_ok=True)
-
-    # Extract the layers from the recipe
-    config_layers = recipe['layers']
-
     # Use a temporary file for the tarball
     with tempfile.NamedTemporaryFile(suffix=".tar.gz") as temp_file:
         with tarfile.open(temp_file.name, "w:gz") as tar:
-            # Iterate over layers and apply configurations
-            for layer in config_layers:
-                # Handle git layer type
-                if layer['type'] == 'git':
-                    parsed_url = urlparse(layer['url'])
-                    host = parsed_url.netloc
-                    user_repo = parsed_url.path.lstrip('/')
-                    branch = layer['branch_or_tag']
-                    local_layer_path = os.path.join(cache_dir, f"{host}-{user_repo}-{branch}")
-                    if not os.path.exists(local_layer_path):
-                        subprocess.run(['git', 'clone', '--branch', branch, layer['url'], local_layer_path])
-                    else:
-                        print(f"Layer '{user_repo}' from branch '{branch}' is already imported.")
-                    layer_path = local_layer_path
-
-                # Append requirements to the lists
-                rpm_requirements += get_requirements_files(layer_path, 'rpm-requirements.txt')
-                deb_requirements += get_requirements_files(layer_path, 'dpm-requirements.txt')
-                pip_requirements += get_requirements_files(layer_path, 'pip-requirements.txt')
-
-                # Add configs to the tarball
-                config_dir = os.path.join(layer_path, 'configs')
-                if not os.path.exists(config_dir):
-                    print(f"Config directory not found in layer: {layer['name']}")
-                    continue
-                tar.add(config_dir, arcname=f'{layer["name"]}')
+            # Add configs to the tarball
+            for config in squashed_layer['configs']:
+                tar.add(config, arcname=os.path.basename(config))
 
         # Upload the tarball and extract it in the base image
         subprocess.run(['virt-customize', '-a', base_image, '--upload', f'{temp_file.name}:/'])
         subprocess.run(['virt-customize', '-a', base_image, '--run-command', f'tar xzf /{os.path.basename(temp_file.name)} -C /'])
 
     # Install rpm and deb packages, and pip requirements in the base image
-    if rpm_requirements:
-        subprocess.run(['virt-customize', '-a', base_image, '--run-command', f'dnf install -y {" ".join(rpm_requirements)}'])
-    if deb_requirements:
-        subprocess.run(['virt-customize', '-a', base_image, '--run-command', f'apt-get install -y {" ".join(deb_requirements)}'])
-    if pip_requirements:
+    if squashed_layer['rpm_requirements']:
+        subprocess.run(['virt-customize', '-a', base_image, '--run-command', f'dnf install -y {" ".join(squashed_layer["rpm_requirements"])}'])
+    if squashed_layer['deb_requirements']:
+        subprocess.run(['virt-customize', '-a', base_image, '--run-command', f'apt-get install -y {" ".join(squashed_layer["deb_requirements"])}'])
+    if squashed_layer['pip_requirements']:
         subprocess.run(['virt-customize', '-a', base_image, '--run-command', f'{python_version} -m venv /opt/os-python-venv'])
-        subprocess.run(['virt-customize', '-a', base_image, '--run-command', f'source /opt/os-python-venv/bin/activate && pip install {" ".join(pip_requirements)}'])
+        subprocess.run(['virt-customize', '-a', base_image, '--run-command', f'source /opt/os-python-venv/bin/activate && pip install {" ".join(squashed_layer["pip_requirements"])}'])
         subprocess.run(['virt-customize', '-a', base_image, '--run-command', 'chmod -R 777 /opt/os-python-venv'])
 
-    # Copy the base image to the output image
-    subprocess.run(['cp', base_image, output_image])
+    # Run the squashed script
+    with tempfile.NamedTemporaryFile(suffix=".sh") as temp_script:
+        with open(temp_script.name, 'w') as file:
+            file.write(squashed_layer['squash_script'])
+        subprocess.run(['virt-customize', '-a', base_image, '--run-command', f'bash {temp_script.name}'])
+
+def export_squashed_layer(squashed_layer, output_file):
+    """
+    Export the squashed layer into a tarball.
+
+    Args:
+        squashed_layer (dict): Squashed layer of configurations
+        output_file (str): Path to the output tarball file
+    """
+    with tarfile.open(output_file, "w:gz") as tar:
+        # Add configs to the tarball
+        for config in squashed_layer['configs']:
+            tar.add(config, arcname=os.path.basename(config))
+
+        # Add requirements to the tarball
+        for requirements in ['rpm_requirements', 'deb_requirements', 'pip_requirements']:
+            with tempfile.NamedTemporaryFile(suffix=".txt") as temp_requirements:
+                with open(temp_requirements.name, 'w') as file:
+                    file.write("\n".join(squashed_layer[requirements]))
+                tar.add(temp_requirements.name, arcname=f"{requirements}.txt")
+
+        # Add the squashed script to the tarball
+        with tempfile.NamedTemporaryFile(suffix=".sh") as temp_script:
+            with open(temp_script.name, 'w') as file:
+                file.write(squashed_layer['squash_script'])
+            tar.add(temp_script.name, arcname="squash_script.sh")
+
