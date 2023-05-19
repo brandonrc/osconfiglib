@@ -88,6 +88,78 @@ my-build/
 
 You can refer to this [os-layer-template](https://github.com/brandonrc/os-layer-template) for a complete template of the repository structure.
 
+
+
+## TOML File Usage
+
+You can define your layers in a TOML file for easy import, squash, and application. Here's an example of a TOML file:
+
+```toml
+name = "Ubuntu-Python-Dev"
+version = "1.0.0"
+
+[layers]
+[[layers]]
+type = "git"
+url = "https://github.com/user/os-ubuntu.git"
+branch_or_tag = "main"
+
+[[layers]]
+type = "git"
+url = "https://github.com/user/os-python.git"
+branch_or_tag = "main"
+
+[[layers]]
+type = "local"
+path = "/path/to/your/local/os-custom-configs"
+```
+
+This TOML file defines three layers. The `os-ubuntu` and `os-python` layers are git layers. The `os-custom-configs` layer is a local layer, stored in your filesystem.
+
+To use these layers:
+
+1. Import the layers using the `import_layers` function:
+
+   ```python
+   import_layers('path/to/your/layers.toml')
+   ```
+
+   This function will import all the layers defined in your TOML file into your local cache. For git layers, the repositories will be cloned. For local layers, they are already in your filesystem, so they won't be imported.
+
+2. Squash the layers using the `squash_layers` function:
+
+   ```python
+   squashed_layer = squash_layers(layers)
+   ```
+
+   This function will combine all the layers into a single squashed layer.
+
+3. You can either export the squashed layer into a tarball using the `export_squashed_layer` function:
+
+   ```python
+   export_squashed_layer(squashed_layer, 'path/to/your/output.tar.gz')
+   ```
+
+   Or apply the squashed layer to a base image using the `apply_squashed_layer` function:
+
+   ```python
+   apply_squashed_layer('path/to/your/base.qcow2', squashed_layer, 'path/to/your/output.qcow2')
+   ```
+
+4. If you want to export or apply layers based on a TOML file directly, you can use the `toml_export` or `toml_apply` functions:
+
+   ```python
+   toml_export('path/to/your/layers.toml', 'path/to/your/output.tar.gz')
+   ```
+
+   ```python
+   toml_apply('path/to/your/layers.toml', 'path/to/your/base.qcow2', 'path/to/your/output.qcow2')
+   ```
+
+   The `toml_export` function will export a squashed layer based on the layers defined in the TOML file. The `toml_apply` function will apply a squashed layer based on the layers defined in the TOML file to a base image.
+
+
+
 ## Developing
 
 To run the test suite, install the dev dependencies and run pytest:

@@ -213,6 +213,61 @@ def delete_layer_if_invalid(layer_path):
     # Returns false if we did not delete the layer. 
     return False
 
+def toml_check(toml_file_path):
+    """
+    Checks if the TOML file has at least one "layers" key.
+
+    Args:
+        toml_file_path (str): Path to the TOML file.
+
+    Returns:
+        bool: True if the TOML file has at least one "layers" key, False otherwise.
+    """
+
+    with open(toml_file_path, 'r') as file:
+        data = toml.load(file)
+
+    if 'layers' in data and data['layers']:
+        return True
+    else:
+        print(f"The TOML file at {toml_file_path} does not contain any 'layers' key.")
+        return False
+
+def import_layers(toml_file_path):
+    """
+    Imports layers specified in a TOML file.
+
+    Args:
+        toml_file_path (str): Path to the TOML file.
+
+    Returns:
+        bool: False if any of the layer imports fail, True otherwise.
+    """
+
+    # Check the TOML file first
+    if not toml_check(toml_file_path):
+        return False
+
+    # Load and parse the TOML file
+    with open(toml_file_path, 'r') as file:
+        data = toml.load(file)
+
+    # Iterate over the layers in the TOML file
+    for layer in data['layers']:
+        # Local layers are already in cache, so no need to import them
+        if layer['type'] == 'local':
+            continue
+
+        # Import git layers
+        elif layer['type'] == 'git':
+            success = import_layer(repo_url=layer['url'], branch=layer.get('branch_or_tag', 'main'))
+            if not success:
+                print(f"Failed to import layer from {layer['url']}, aborting import_layers.")
+                return False
+
+    print("All layers imported successfully.")
+    return True
+
 def import_layer(repo_url, branch='main'):
     """
     Import a layer from a git repository. The layer will be stored in a local
@@ -332,4 +387,27 @@ def export_squashed_layer(squashed_layer, output_file):
             with open(temp_script.name, 'w') as file:
                 file.write(squashed_layer['squash_script'])
             tar.add(temp_script.name, arcname="squash_script.sh")
+
+
+
+def toml_export(toml_file_path, output_file):
+    """
+    Exports layers specified in a TOML file.
+
+    Args:
+        toml_file_path (str): Path to the TOML file.
+        output_file (str): Path to the output file where the squashed layer will be exported.
+    """
+    
+    # Load and parse the TOML file
+    with open(toml_file_path, 'r') as file:
+        data = toml.load(file)
+
+    # Iterate over the layers in the TOML file and squash them
+    squashed_layers = squash_layers(data['layers'])
+
+    # Export the squashed layer
+    export_squashed_layer(squashed_layers, output_file)
+    print("Layers exported successfully.")
+
 

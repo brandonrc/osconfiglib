@@ -4,6 +4,8 @@ import os
 import subprocess
 import tempfile
 import tarfile
+import layers
+import toml
 
 def apply_squashed_layer(base_image, squashed_layer, output_image, python_version="python3"):
     """
@@ -46,3 +48,26 @@ def apply_squashed_layer(base_image, squashed_layer, output_image, python_versio
 
     # Copy the base image to the output image
     subprocess.run(['cp', base_image, output_image])
+
+
+def toml_apply(toml_file_path, base_image, output_image, python_version="python3"):
+    """
+    Applies layers specified in a TOML file to a base image.
+
+    Args:
+        toml_file_path (str): Path to the TOML file.
+        base_image (str): Path to the base image file.
+        output_image (str): Path to the output image file.
+        python_version (str): Python version used for virtual environment. If none then python3 is used.
+    """
+
+    # Load and parse the TOML file
+    with open(toml_file_path, 'r') as file:
+        data = toml.load(file)
+
+    # Iterate over the layers in the TOML file and squash them
+    squashed_layers = layers.squash_layers(data['layers'])
+
+    # Apply the squashed layer
+    apply_squashed_layer(base_image, squashed_layers, output_image, python_version)
+    print("Layers applied successfully.")
