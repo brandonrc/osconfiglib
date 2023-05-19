@@ -5,7 +5,7 @@ import subprocess
 import tempfile
 import tarfile
 
-def apply_squashed_layer(base_image, squashed_layer, output_image, python_version):
+def apply_squashed_layer(base_image, squashed_layer, output_image, python_version="python3"):
     """
     Apply squashed layers of configurations to a base image using virt-customize.
 
@@ -13,7 +13,7 @@ def apply_squashed_layer(base_image, squashed_layer, output_image, python_versio
         base_image (str): Path to the base image file
         squashed_layer (dict): Dictionary containing squashed layers
         output_image (str): Path to the output image file
-        python_version (str): Python version used for virtual environment
+        python_version (str): Python version used for virtual environment. If none then python3 is used
     """
     # Use a temporary file for the tarball
     with tempfile.NamedTemporaryFile(suffix=".tar.gz") as temp_file:

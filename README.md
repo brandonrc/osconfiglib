@@ -33,7 +33,7 @@ squashed_layer = squash_layers(base_image_path, os_recipe_toml_path)
 export_squashed_layer(squashed_layer, output_image_path)
 
 # Apply the squashed layer to a base image
-apply_squashed_layer(base_image_path, squashed_layer, output_image_path, python_version)
+apply_squashed_layer(base_image_path, squashed_layer, output_image_path, python_version="python3")
 ```
 
 ### CLI Usage
