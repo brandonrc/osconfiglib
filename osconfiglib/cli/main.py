@@ -1,6 +1,6 @@
 # osconfiglib/cli/main.py
 import click
-from osconfiglib import layers, utils
+from osconfiglib import layers, utils, virt_customize
 
 @click.group()
 def cli():

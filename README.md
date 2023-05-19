@@ -23,10 +23,17 @@ $ pip install -r requirements.txt
 Here's a basic example of how you can use osconfiglib:
 
 ```python
-from osconfiglib.layers import apply_layers
+from osconfiglib.layers import squash_layers, export_squashed_layer
+from osconfiglib.virt_customize import apply_squashed_layer
 
-# Use osconfiglib to apply layers to a base image
-apply_layers(base_image_path, os_recipe_toml_path, output_image_path, python_version)
+# Use osconfiglib to squash layers
+squashed_layer = squash_layers(base_image_path, os_recipe_toml_path)
+
+# Export the squashed layer
+export_squashed_layer(squashed_layer, output_image_path)
+
+# Apply the squashed layer to a base image
+apply_squashed_layer(base_image_path, squashed_layer, output_image_path, python_version)
 ```
 
 ### CLI Usage
@@ -81,7 +88,6 @@ my-build/
 
 You can refer to this [os-layer-template](https://github.com/brandonrc/os-layer-template) for a complete template of the repository structure.
 
-
 ## Developing
 
 To run the test suite, install the dev dependencies and run pytest:
@@ -93,4 +99,6 @@ $ pytest
 
 ## Contact
 
-If you have any issues or questions, feel free to contact me at brandon.geraci@gmail.com.
+If you have any issues or questions, feel free to
+
+ contact me at brandon.geraci@gmail.com.
