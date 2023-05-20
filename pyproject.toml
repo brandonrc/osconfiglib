@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "osconfiglib"
-version = "v0.1.5"
+version = "v0.2.0"
 description = "Library for image configuration"
 authors = ["Brandon Geraci <brandon.geraci@gmail.com>"]
 license = "MIT"
