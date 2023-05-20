@@ -1,0 +1,9 @@
+name = "Ubuntu-Python-Dev"
+version = "1.0.0"
+
+[layers]
+[[layer]]
+name = "os-ubuntu"
+type = "git"
+url = "https://github.com/brandonrc/os-layer-template.git"
+branch_or_tag = "main"

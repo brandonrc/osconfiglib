@@ -70,9 +70,11 @@ cli.add_command(delete_layer, name='delete')
 
 @click.command()
 @click.argument('recipe')
-def export_squashed_configs(recipe):
+@click.argument('output_dir')
+def export_squashed_configs(recipe,output_dir):
     # Here you would call the functionality that deletes a layer
-    click.echo(f'Squashing configs for {recipe}.')
+    click.echo(f'Squashing configs for {recipe} and saving them to {output_dir}.')
+    layers.toml_export(recipe,output_dir)
 cli.add_command(export_squashed_configs, name='export-squashed-configs')
 
 if __name__ == '__main__':

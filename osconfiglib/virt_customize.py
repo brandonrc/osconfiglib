@@ -4,7 +4,7 @@ import os
 import subprocess
 import tempfile
 import tarfile
-import layers
+from osconfiglib import layers
 import toml
 
 def apply_squashed_layer(base_image, squashed_layer, output_image, python_version="python3"):

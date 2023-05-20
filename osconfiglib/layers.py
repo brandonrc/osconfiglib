@@ -1,4 +1,5 @@
 # File: osconfiglib/layers.py
+import datetime
 
 import os
 import subprocess
@@ -268,6 +269,29 @@ def import_layers(toml_file_path):
     print("All layers imported successfully.")
     return True
 
+def git_to_dir_name(repo_url, branch='main'):
+    """
+    Generate a custom directory name for a git repository.
+
+    Args:
+        repo_url: The URL of the git repository.
+        branch: The branch of the repository. Default is 'main'.
+
+    Returns:
+        A string representing the custom directory name.
+    """
+    parsed_url = urllib.parse.urlparse(repo_url)
+
+    # Extract the host
+    host = parsed_url.netloc
+
+    # Extract the owner and repository name
+    path_parts = parsed_url.path.strip('/').split('/')
+    owner = '-'.join(path_parts[:-1])  # Combine all groups into one string
+    repo_name = path_parts[-1].replace('.git', '')  # The repository name is the last part
+
+    return f"{host}-{owner}-{repo_name}-{branch}"
+
 def import_layer(repo_url, branch='main'):
     """
     Import a layer from a git repository. The layer will be stored in a local
@@ -275,7 +299,6 @@ def import_layer(repo_url, branch='main'):
     will be stored in a separate directory.
 
     Args:
-        name: The name of the layer.
         repo_url: The URL of the git repository.
         branch: The branch of the repository to import. Default is 'main'.
 
@@ -286,20 +309,11 @@ def import_layer(repo_url, branch='main'):
     if not validate_git_url(repo_url):
         print(f"Url '{repo_url}' is not valid")
         return False
-    
-    parsed_url = urllib.parse.urlparse(repo_url)
-    
-    # Extract the host
-    host = parsed_url.netloc
 
-    # Extract the owner and repository name
-    path_parts = parsed_url.path.strip('/').split('/')
-    owner = '-'.join(path_parts[:-1])  # Combine all groups into one string
-    repo_name = path_parts[-1].replace('.git', '')  # The repository name is the last part
-    cache_dir = os.path.expanduser(f"~/.cache/osconfiglib/{host}-{owner}-{repo_name}-{branch}")
+    cache_dir = os.path.expanduser(f"~/.cache/osconfiglib/{git_to_dir_name(repo_url, branch)}")
     print(cache_dir)
     if os.path.exists(cache_dir):
-        print(f"Layer '{repo_name}' from '{owner}' on branch '{branch}' is already imported.")
+        print(f"Layer from repository '{repo_url}' on branch '{branch}' is already imported.")
         return False
 
     print(f"Cloning repository '{repo_url}' branch '{branch}' into '{cache_dir}'...")
@@ -307,20 +321,34 @@ def import_layer(repo_url, branch='main'):
     if result.returncode != 0:
         print(f"Branch '{branch}' not found, trying with 'master' branch...")
         branch = 'master'
-        cache_dir = os.path.expanduser(f"~/.cache/osconfiglib/{host}-{owner}-{repo_name}-{branch}")
+        cache_dir = os.path.expanduser(f"~/.cache/osconfiglib/{git_to_dir_name(repo_url, branch)}")
         if os.path.exists(cache_dir):
-            print(f"Layer '{repo_name}' from '{owner}' on branch '{branch}' is already imported.")
+            print(f"Layer from repository '{repo_url}' on branch '{branch}' is already imported.")
             return True
         subprocess.run(['git', 'clone', '--branch', branch, repo_url, cache_dir], check=True)
     if delete_layer_if_invalid(cache_dir):
         print(f"Deleting the folder '{cache_dir}' because it was not valid Need to follow the layer file structure")
         print("I need to find that URL and put it here...")
         return False
-    print(f"Layer '{repo_name}' from '{owner}' on branch '{branch}' imported successfully.")
+    print(f"Layer from repository '{repo_url}' on branch '{branch}' imported successfully.")
     return True
 
 
-def squash_layers(layers):
+def tar_configs(configs_path):
+    # Determine the output tarball file path
+    output_tarball_file = os.path.join(os.path.dirname(configs_path), 'configs.tar.gz')
+
+    with tarfile.open(output_tarball_file, 'w:gz') as tar:
+        for dirpath, dirnames, filenames in os.walk(configs_path):
+            for filename in filenames:
+                filepath = os.path.join(dirpath, filename)
+                arcname = os.path.relpath(filepath, configs_path)  # get the relative path
+                tar.add(filepath, arcname=arcname)
+
+    shutil.rmtree(configs_path)  # delete the configs directory
+    return output_tarball_file
+
+def squash_layers(layers, tmp_dir):
     """
     Combine multiple layers into a single layer (squashed layer).
 
@@ -336,17 +364,37 @@ def squash_layers(layers):
                           "trap 'echo \"Error occurred in ${FUNCNAME[1]}\"; exit 1' ERR\n"
     }
 
+
+    merged_configs_dir = os.path.join(tmp_dir, 'configs')
+    os.makedirs(merged_configs_dir, exist_ok=True)
+
     # Iterate over layers and squash configurations
     for layer in layers:
+        layer_path = layer['path']  # Assumes 'layer' is a dictionary with a 'path' key
+        print(layer_path)
         # Append requirements to the lists
         squashed_layer['rpm_requirements'] += get_requirements_files(layer_path, 'rpm-requirements.txt')
         squashed_layer['deb_requirements'] += get_requirements_files(layer_path, 'dpm-requirements.txt')
         squashed_layer['pip_requirements'] += get_requirements_files(layer_path, 'pip-requirements.txt')
 
-        # Combine configs into the squashed layer
-        config_dir = os.path.join(layer_path, 'configs')
-        if os.path.exists(config_dir):
-            squashed_layer['configs'].append(config_dir)
+        # Merge configs into the squashed layer
+        layer_configs_dir = os.path.join(layer_path, 'configs')
+        print(layer_configs_dir)
+        if os.path.exists(layer_configs_dir):
+            for dirpath, dirnames, filenames in os.walk(layer_configs_dir):
+                print("======================")
+                print(dirpath)
+                for filename in filenames:
+                    print("-----------------------------")
+                    print(filename)
+                    src_file = os.path.join(dirpath, filename)
+                    dest_file = os.path.join(merged_configs_dir, os.path.relpath(src_file, layer_configs_dir))
+
+                    if os.path.exists(dest_file):
+                        print(f"Warning: Overwriting file {dest_file}")
+
+                    os.makedirs(os.path.dirname(dest_file), exist_ok=True)
+                    shutil.copy2(src_file, dest_file, follow_symlinks=False)
 
         # Combine scripts into the squashed layer
         script_dir = os.path.join(layer_path, 'scripts')
@@ -359,10 +407,14 @@ def squash_layers(layers):
                     squashed_layer['squash_script'] += f"function {layer['name']}_{script.replace('.', '_')}() {{\n"
                     squashed_layer['squash_script'] += stripped_script + "\n}\n"
                     squashed_layer['squash_script'] += f"{layer['name']}_{script.replace('.', '_')}\n"
+    tar_location = tar_configs(merged_configs_dir)
+    squashed_layer['configs'] = tar_location  # Now 'configs' contains the path to the merged configs directory
 
     return squashed_layer
 
-def export_squashed_layer(squashed_layer, output_file):
+
+
+def export_squashed_layer(squashed_layer, output_file, tmp_dir):
     """
     Export the squashed layer into a tarball.
 
@@ -372,8 +424,7 @@ def export_squashed_layer(squashed_layer, output_file):
     """
     with tarfile.open(output_file, "w:gz") as tar:
         # Add configs to the tarball
-        for config in squashed_layer['configs']:
-            tar.add(config, arcname=os.path.basename(config))
+        tar.add(squashed_layer['configs'], arcname="configs.tar.gz")
 
         # Add requirements to the tarball
         for requirements in ['rpm_requirements', 'deb_requirements', 'pip_requirements']:
@@ -389,25 +440,55 @@ def export_squashed_layer(squashed_layer, output_file):
             tar.add(temp_script.name, arcname="squash_script.sh")
 
 
+def generate_tarball_filename(name, version):
+    # Use "dev" if version string is empty
+    if not version:
+        version = "dev"
 
-def toml_export(toml_file_path, output_file):
+    # Get current date and time
+    now = datetime.datetime.now()
+    date_time = now.strftime("%Y%m%d-%H%M%S")
+
+    # Return the filename
+    return f"{name}-{version}-{date_time}.tar.gz"
+
+def toml_export(toml_file_path, output_dir):
     """
     Exports layers specified in a TOML file.
 
     Args:
         toml_file_path (str): Path to the TOML file.
-        output_file (str): Path to the output file where the squashed layer will be exported.
+        output_dir (str): Path to the output file where the squashed layer will be exported.
     """
+    
+        # Convert input paths to absolute paths
+    toml_file_path = os.path.abspath(toml_file_path)
+    output_dir = os.path.abspath(output_dir)
+
+    
+    if not os.path.isfile(toml_file_path):
+        print(f"File not found: {toml_file_path}")
+        return
+
     
     # Load and parse the TOML file
     with open(toml_file_path, 'r') as file:
-        data = toml.load(file)
+        # Print the content of the file for debugging
+        content = file.read()
+        print(f"Content of the file {toml_file_path}:\n{content}")
+        
+        data = toml.loads(content)  # Use loads() instead of load()
 
-    # Iterate over the layers in the TOML file and squash them
-    squashed_layers = squash_layers(data['layers'])
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        # Iterate over the layers in the TOML file and squash them
+        squashed_layers = squash_layers(data['layer'], tmp_dir)
 
-    # Export the squashed layer
-    export_squashed_layer(squashed_layers, output_file)
+        filename = generate_tarball_filename(data['name'], data['version'])
+        
+        output_file = os.path.join(output_dir, filename)
+
+        # Export the squashed layer
+        export_squashed_layer(squashed_layers, output_file, tmp_dir)
     print("Layers exported successfully.")
 
 

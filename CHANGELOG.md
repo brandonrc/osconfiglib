@@ -6,9 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-## [0.1.6] - 2023-05-18
-
+## [0.2.0] - 2023-05-18
 ### Added
+- New function `git_to_dir_name()` to handle git imports of custom layers.
+- Extended output directory specification in `export_squashed_configs()`.
+- `merge_configs()` function to combine configs from multiple layers.
+- Modified `squash_layers()` to utilize `merge_configs()` function.
+- Updated `export_squashed_layer()` to handle temporary config directories and create tarballs of squashed configurations, requirement files, and scripts.
+- Support for maintaining symbolic links during the layer squashing process.
+- Naming convention for tarball files, which now include name, version, and date.
 - Split the `apply_layers` function into `squash_layers`, `export_squashed_layer`, and `apply_squashed_layer` to allow for more flexibility in how layers are applied.
 - Added `apply_squashed_layer` function to a new `virt_customize.py` module for better organization.
 - Added enhanced error checking to squashed scripts, with comments indicating the origin of each script for easier debugging.
@@ -20,6 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Updated `README.md` to reflect new function usage and include `virt_customize.py` in the imports.
+- Updated `export_squashed_layer()` to include the configurations directory in the tar without including the 'configs' directory itself.
+- Updated `toml_export()` to convert all input paths to absolute paths.
+
 
 ### Fixed
 - Scripts in squashed layers now include a leading `#!/bin/bash`.
@@ -27,5 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed an issue where the layer import process would continue even if a layer import failed. The import process will now stop and warn the user if a layer import fails.
 - Updated the layer import process to support git layers. The layer import process will now clone the git repository into the local cache directory.
 - Updated the layer import process to support local layers. The import process will now skip layers that are already in the local cache.
+- Bug in `toml_export()` function related to handling relative paths.
+- Fixed a situation where the `export_squashed_layer()` function was trying to tar up the entire root file system if an empty value was passed.
 
 
