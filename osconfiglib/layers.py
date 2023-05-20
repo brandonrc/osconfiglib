@@ -232,45 +232,37 @@ def toml_check(toml_file_path):
     with open(toml_file_path, 'r') as file:
         data = toml.load(file)
 
-    if 'layers' in data and data['layers']:
+    if 'layers' in data and data['layer']:
         return True
     else:
         print(f"The TOML file at {toml_file_path} does not contain any 'layers' key.")
         return False
 
 
-def import_layers(toml_file_path):
+def import_layers(data):
     """
     Imports layers specified in a TOML file.
 
     Args:
-        toml_file_path (str): Path to the TOML file.
+        data: A dictionary containing the layers to import.
 
     Returns:
         bool: False if any of the layer imports fail, True otherwise.
     """
-
-    # Check the TOML file first
-    if not toml_check(toml_file_path):
-        return False
-
-    # Load and parse the TOML file
-    with open(toml_file_path, 'r') as file:
-        data = toml.load(file)
-
-    # Iterate over the layers in the TOML file
-    for layer in data['layers']:
+    for layer in data['layer']:
         # Local layers are already in cache, so no need to import them
         if layer['type'] == 'local':
+            layer['path'] = os.path.expanduser('~/.cache/osconfiglib') + '/' + layer['name']
+            # TODO: check to see if local layer is in cache
             continue
 
         # Import git layers
         elif layer['type'] == 'git':
             success = import_layer(repo_url=layer['url'], branch=layer.get('branch_or_tag', 'main'))
+            layer['path'] = os.path.expanduser('~/.cache/osconfiglib') + '/' + git_to_dir_name(layer['url'])
             if not success:
                 print(f"Failed to import layer from {layer['url']}, aborting import_layers.")
                 return False
-
     print("All layers imported successfully.")
     return True
 
@@ -321,7 +313,7 @@ def import_layer(repo_url, branch='main'):
     print(cache_dir)
     if os.path.exists(cache_dir):
         print(f"Layer from repository '{repo_url}' on branch '{branch}' is already imported.")
-        return False
+        return True
 
     print(f"Cloning repository '{repo_url}' branch '{branch}' into '{cache_dir}'...")
     result = subprocess.run(['git', 'clone', '--branch', branch, repo_url, cache_dir], check=False)
@@ -347,7 +339,9 @@ def tar_configs(configs_path):
 
     with tarfile.open(output_tarball_file, 'w:gz') as tar:
         for dirpath, dirnames, filenames in os.walk(configs_path):
+            print(dirpath)
             for filename in filenames:
+                print(filename)
                 filepath = os.path.join(dirpath, filename)
                 arcname = os.path.relpath(filepath, configs_path)  # get the relative path
                 tar.add(filepath, arcname=arcname)
@@ -379,8 +373,8 @@ def squash_layers(layers, tmp_dir):
     # Iterate over layers and squash configurations
     for layer in layers:
         layer_path = layer['path']  # Assumes 'layer' is a dictionary with a 'path' key
-        print(layer_path)
-        # Append requirements to the lists
+
+        # Append requirements to the listsF
         squashed_layer['rpm_requirements'] += get_requirements_files(layer_path, 'rpm-requirements.txt')
         squashed_layer['deb_requirements'] += get_requirements_files(layer_path, 'dpm-requirements.txt')
         squashed_layer['pip_requirements'] += get_requirements_files(layer_path, 'pip-requirements.txt')
@@ -478,6 +472,10 @@ def toml_export(toml_file_path, output_dir):
         print(f"File not found: {toml_file_path}")
         return
 
+    if not toml_check(toml_file_path):
+        print(f"Invalid TOML file: {toml_file_path}")
+        return
+
     # Load and parse the TOML file
     with open(toml_file_path, 'r') as file:
         # Print the content of the file for debugging
@@ -485,6 +483,10 @@ def toml_export(toml_file_path, output_dir):
         print(f"Content of the file {toml_file_path}:\n{content}")
 
         data = toml.loads(content)  # Use loads() instead of load()
+
+    if not import_layers(data):
+        print(f"Failed to import layers from {toml}")
+        return
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         # Iterate over the layers in the TOML file and squash them
