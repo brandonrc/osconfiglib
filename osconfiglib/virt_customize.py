@@ -38,7 +38,7 @@ def apply_squashed_layer(base_image, squashed_layer, output_image, python_versio
 
     # Install rpm and deb packages, and pip requirements in the base image
     if squashed_layer['rpm_requirements']:
-        subprocess.run(['virt-customize', '-a', base_image, '--run-command', f'dnf install -y {" ".join(squashed_layer["rpm_requirements"])}'])
+        subprocess.run(['virt-customize', '-a', base_image, '--run-command', f'dnf install -y --nogpgcheck --allowerasing{" ".join(squashed_layer["rpm_requirements"])}'])
     if squashed_layer['deb_requirements']:
         subprocess.run(['virt-customize', '-a', base_image, '--run-command', f'apt-get install -y {" ".join(squashed_layer["deb_requirements"])}'])
     if squashed_layer['pip_requirements']:
