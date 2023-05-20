@@ -1,19 +1,17 @@
 # File: osconfiglib/layers.py
 import datetime
-
 import os
+import re
+import shutil
 import subprocess
 import tarfile
 import tempfile
 import urllib.parse
-import toml
 from pathlib import Path
-
 from shutil import copy2
-import shutil
-from pathlib import Path
 from urllib.parse import urlparse
-import re
+
+import toml
 
 
 def add_file_to_layer(layer_name, source_file_path, destination_path):
@@ -79,6 +77,7 @@ def add_package_to_layer(layer_name, package_type, package_name):
 
     print(f"Package {package_name} added to layer {layer_name} successfully.")
 
+
 def create_layer(layer_name):
     """
     Create a new layer in the local cache with the specified name.
@@ -106,6 +105,7 @@ def create_layer(layer_name):
 
     print(f"Layer {layer_name} created successfully.")
     return True
+
 
 def get_requirements_files(layer, file_name):
     """
@@ -151,9 +151,10 @@ def list_layers():
                 git_url = subprocess.getoutput(f'git -C {item} config --get remote.origin.url')
                 print(f'{item.name:<20} {git_url:<20}')
 
+
 def validate_git_url(url):
     # regex for matching SSH URLs
-    ssh_pattern = re.compile(r"^(git@|ssh:\/\/git@)([\w\.@:\/~-]|(%[0-9a-fA-F]{2}))*$")
+    ssh_pattern = re.compile(r'^(git@|ssh://git@)([\w.@:/~-]|(%[0-9a-fA-F]{2}))*$')
 
     # first, check if the URL is an HTTP(S) URL
     try:
@@ -170,6 +171,7 @@ def validate_git_url(url):
     # if neither check passed, the URL is invalid
     return False
 
+
 def validate_layer_structure(layer_path):
     """
     Validate the structure of a layer directory.
@@ -182,7 +184,7 @@ def validate_layer_structure(layer_path):
     """
     expected_dirs = ['configs', 'package-lists', 'scripts']
     expected_files = {
-        'package-lists': ['dpm-requirments.txt', 'pip-requirments.txt', 'rpm-requirments.txt'],
+        'package-lists': ['dpm-requirements.txt', 'pip-requirements.txt', 'rpm-requirements.txt'],
     }
 
     # Check if the required directories exist
@@ -200,6 +202,7 @@ def validate_layer_structure(layer_path):
 
     return True
 
+
 def delete_layer_if_invalid(layer_path):
     """
     Delete the layer directory if its structure is invalid.
@@ -213,6 +216,7 @@ def delete_layer_if_invalid(layer_path):
         return True
     # Returns false if we did not delete the layer. 
     return False
+
 
 def toml_check(toml_file_path):
     """
@@ -233,6 +237,7 @@ def toml_check(toml_file_path):
     else:
         print(f"The TOML file at {toml_file_path} does not contain any 'layers' key.")
         return False
+
 
 def import_layers(toml_file_path):
     """
@@ -269,6 +274,7 @@ def import_layers(toml_file_path):
     print("All layers imported successfully.")
     return True
 
+
 def git_to_dir_name(repo_url, branch='main'):
     """
     Generate a custom directory name for a git repository.
@@ -291,6 +297,7 @@ def git_to_dir_name(repo_url, branch='main'):
     repo_name = path_parts[-1].replace('.git', '')  # The repository name is the last part
 
     return f"{host}-{owner}-{repo_name}-{branch}"
+
 
 def import_layer(repo_url, branch='main'):
     """
@@ -348,12 +355,14 @@ def tar_configs(configs_path):
     shutil.rmtree(configs_path)  # delete the configs directory
     return output_tarball_file
 
+
 def squash_layers(layers, tmp_dir):
     """
     Combine multiple layers into a single layer (squashed layer).
 
     Args:
         layers (list): List of layers
+        tmp_dir (str): Path to the temporary directory
     """
     squashed_layer = {
         'rpm_requirements': [],
@@ -361,9 +370,8 @@ def squash_layers(layers, tmp_dir):
         'pip_requirements': [],
         'configs': [],
         'squash_script': "#!/bin/bash\n\n"
-                          "trap 'echo \"Error occurred in ${FUNCNAME[1]}\"; exit 1' ERR\n"
+                         "trap 'echo \"Error occurred in ${FUNCNAME[1]}\"; exit 1' ERR\n"
     }
-
 
     merged_configs_dir = os.path.join(tmp_dir, 'configs')
     os.makedirs(merged_configs_dir, exist_ok=True)
@@ -413,7 +421,6 @@ def squash_layers(layers, tmp_dir):
     return squashed_layer
 
 
-
 def export_squashed_layer(squashed_layer, output_file, tmp_dir):
     """
     Export the squashed layer into a tarball.
@@ -421,6 +428,7 @@ def export_squashed_layer(squashed_layer, output_file, tmp_dir):
     Args:
         squashed_layer (dict): Squashed layer of configurations
         output_file (str): Path to the output tarball file
+        tmp_dir (str): Path to the temporary directory
     """
     with tarfile.open(output_file, "w:gz") as tar:
         # Add configs to the tarball
@@ -452,6 +460,7 @@ def generate_tarball_filename(name, version):
     # Return the filename
     return f"{name}-{version}-{date_time}.tar.gz"
 
+
 def toml_export(toml_file_path, output_dir):
     """
     Exports layers specified in a TOML file.
@@ -460,23 +469,21 @@ def toml_export(toml_file_path, output_dir):
         toml_file_path (str): Path to the TOML file.
         output_dir (str): Path to the output file where the squashed layer will be exported.
     """
-    
-        # Convert input paths to absolute paths
+
+    # Convert input paths to absolute paths
     toml_file_path = os.path.abspath(toml_file_path)
     output_dir = os.path.abspath(output_dir)
 
-    
     if not os.path.isfile(toml_file_path):
         print(f"File not found: {toml_file_path}")
         return
 
-    
     # Load and parse the TOML file
     with open(toml_file_path, 'r') as file:
         # Print the content of the file for debugging
         content = file.read()
         print(f"Content of the file {toml_file_path}:\n{content}")
-        
+
         data = toml.loads(content)  # Use loads() instead of load()
 
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -484,11 +491,9 @@ def toml_export(toml_file_path, output_dir):
         squashed_layers = squash_layers(data['layer'], tmp_dir)
 
         filename = generate_tarball_filename(data['name'], data['version'])
-        
+
         output_file = os.path.join(output_dir, filename)
 
         # Export the squashed layer
         export_squashed_layer(squashed_layers, output_file, tmp_dir)
     print("Layers exported successfully.")
-
-
