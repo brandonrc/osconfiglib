@@ -2,4 +2,4 @@ env/
 dist/
 __pycache__
 *.tar.gz
-
+.idea/
