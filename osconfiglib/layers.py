@@ -349,7 +349,6 @@ def tar_configs(configs_path):
     shutil.rmtree(configs_path)  # delete the configs directory
     return output_tarball_file
 
-
 def squash_layers(layers, tmp_dir):
     """
     Combine multiple layers into a single layer (squashed layer).
@@ -374,21 +373,16 @@ def squash_layers(layers, tmp_dir):
     for layer in layers:
         layer_path = layer['path']  # Assumes 'layer' is a dictionary with a 'path' key
 
-        # Append requirements to the listsF
+        # Append requirements to the lists
         squashed_layer['rpm_requirements'] += get_requirements_files(layer_path, 'rpm-requirements.txt')
         squashed_layer['deb_requirements'] += get_requirements_files(layer_path, 'dpm-requirements.txt')
         squashed_layer['pip_requirements'] += get_requirements_files(layer_path, 'pip-requirements.txt')
 
         # Merge configs into the squashed layer
         layer_configs_dir = os.path.join(layer_path, 'configs')
-        print(layer_configs_dir)
         if os.path.exists(layer_configs_dir):
             for dirpath, dirnames, filenames in os.walk(layer_configs_dir):
-                print("======================")
-                print(dirpath)
                 for filename in filenames:
-                    print("-----------------------------")
-                    print(filename)
                     src_file = os.path.join(dirpath, filename)
                     dest_file = os.path.join(merged_configs_dir, os.path.relpath(src_file, layer_configs_dir))
 
@@ -402,18 +396,20 @@ def squash_layers(layers, tmp_dir):
         script_dir = os.path.join(layer_path, 'scripts')
         if os.path.exists(script_dir):
             for script in os.listdir(script_dir):
+                if script.lower() == 'readme.md':  # Skip readme.md files
+                    continue
                 with open(os.path.join(script_dir, script), 'r') as file:
                     # Strip comments and add layer/script info
-                    stripped_script = "\n".join(line for line in file if not line.startswith("#"))
+                    stripped_script = "\n".join(line.replace("exit ", "return ") for line in file if not line.startswith("#"))
                     squashed_layer['squash_script'] += f"\n# {layer['name']} {script}\n"
                     squashed_layer['squash_script'] += f"function {layer['name']}_{script.replace('.', '_')}() {{\n"
                     squashed_layer['squash_script'] += stripped_script + "\n}\n"
                     squashed_layer['squash_script'] += f"{layer['name']}_{script.replace('.', '_')}\n"
+
     tar_location = tar_configs(merged_configs_dir)
     squashed_layer['configs'] = tar_location  # Now 'configs' contains the path to the merged configs directory
 
     return squashed_layer
-
 
 def export_squashed_layer(squashed_layer, output_file, tmp_dir):
     """

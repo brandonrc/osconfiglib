@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.3.0] - 2023-05-16
+### Added
+
+- Functionality to replace 'exit' command with 'return' in squashed scripts to avoid premature termination of the combined script. Now, when a script within the squashed script ends with an 'exit' command, it will not terminate the whole squashed script.
+
+### Changed
+
+- Updated the 'squash_layers' function to ignore 'README.md' files present in the script directories when squashing layers. This helps to maintain a clean and focused squashed script, preventing unrelated documentation from being included in the operational script.
+
 ## [0.2.0] - 2023-05-18
 ### Added
 - New function `git_to_dir_name()` to handle git imports of custom layers.
