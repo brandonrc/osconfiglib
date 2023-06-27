@@ -60,7 +60,7 @@ def add_package_to_layer(layer_name, package_type, package_name):
 
     Args:
         layer_name (str): Name of the layer to edit
-        package_type (str): Type of the package ("rpm", "dpm", or "pip")
+        package_type (str): Type of the package ("rpm", "deb", or "pip")
         package_name (str): Name of the package to add
     """
     layer_dir = Path.home() / ".cache" / "osconfiglib" / layer_name
@@ -99,7 +99,7 @@ def create_layer(layer_name):
     (layer_dir / "scripts").mkdir()
 
     # Create the package list files
-    for package_type in ["rpm", "dpm", "pip"]:
+    for package_type in ["rpm", "deb", "pip"]:
         with open(layer_dir / "package-lists" / f"{package_type}-requirements.txt", 'w') as file:
             pass
 
@@ -183,9 +183,12 @@ def validate_layer_structure(layer_path):
         bool: True if the layer structure is valid, False otherwise
     """
     expected_dirs = ['configs', 'package-lists', 'scripts']
-    expected_files = {
-        'package-lists': ['dpm-requirements.txt', 'pip-requirements.txt', 'rpm-requirements.txt'],
-    }
+    
+    # TODO: Read the next TODO that includes some questions about epected files and what to do with those. 
+    # 
+    # expected_files = {
+    #     'package-lists': ['debs.txt', 'python.txt', 'rpms.txt'],
+    # }
 
     # Check if the required directories exist
     for dir_name in expected_dirs:
@@ -193,12 +196,14 @@ def validate_layer_structure(layer_path):
             print(f"Directory '{dir_name}' is missing in the layer")
             return False
 
-    # Check if the required files exist
-    for dir_name, file_names in expected_files.items():
-        for file_name in file_names:
-            if not os.path.isfile(os.path.join(layer_path, dir_name, file_name)):
-                print(f"File '{file_name}' is missing in the '{dir_name}' directory of the layer")
-                return False
+    # TODO: Should we keep this section or remove it? Should we force a file structure to verify things are right? 
+    # 
+    # # Check if the required files exist
+    # for dir_name, file_names in expected_files.items():
+    #     for file_name in file_names:
+    #         if not os.path.isfile(os.path.join(layer_path, dir_name, file_name)):
+    #             print(f"File '{file_name}' is missing in the '{dir_name}' directory of the layer")
+    #             return False
 
     return True
 
@@ -374,9 +379,9 @@ def squash_layers(layers, tmp_dir):
         layer_path = layer['path']  # Assumes 'layer' is a dictionary with a 'path' key
 
         # Append requirements to the lists
-        squashed_layer['rpm_requirements'] += get_requirements_files(layer_path, 'rpm-requirements.txt')
-        squashed_layer['deb_requirements'] += get_requirements_files(layer_path, 'dpm-requirements.txt')
-        squashed_layer['pip_requirements'] += get_requirements_files(layer_path, 'pip-requirements.txt')
+        squashed_layer['rpm_requirements'] += get_requirements_files(layer_path, 'rpms.txt')
+        squashed_layer['deb_requirements'] += get_requirements_files(layer_path, 'debs.txt')
+        squashed_layer['pip_requirements'] += get_requirements_files(layer_path, 'python.txt')
 
         # Merge configs into the squashed layer
         layer_configs_dir = os.path.join(layer_path, 'configs')
