@@ -74,9 +74,9 @@ my-build/
 │   └── usr/local/bin
 │       └── symlink-to-something
 ├── package-lists/
-│   ├── rpm-requirements.txt
-│   ├── dpm-requirements.txt
-│   └── pip-requirements.txt
+│   ├── rpms.txt
+│   ├── deps.txt
+│   └── python.txt
 └── scripts/
     ├── 01-first-script-to-run.sh
     └── 02-second-script-to-run.sh
@@ -99,17 +99,17 @@ name = "Ubuntu-Python-Dev"
 version = "1.0.0"
 
 [layers]
-[[layers]]
+[[layer]]
 type = "git"
 url = "https://github.com/user/os-ubuntu.git"
 branch_or_tag = "main"
 
-[[layers]]
+[[layer]]
 type = "git"
 url = "https://github.com/user/os-python.git"
 branch_or_tag = "main"
 
-[[layers]]
+[[layer]]
 type = "local"
 path = "/path/to/your/local/os-custom-configs"
 ```
