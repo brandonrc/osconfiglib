@@ -397,11 +397,15 @@ def squash_layers(layers, tmp_dir):
                     os.makedirs(os.path.dirname(dest_file), exist_ok=True)
                     shutil.copy2(src_file, dest_file, follow_symlinks=False)
 
+        # Add a list of filenames to ignore (in lowercase)
+        ignored_files = ['readme.md', '.gitkeep']
+
         # Combine scripts into the squashed layer
         script_dir = os.path.join(layer_path, 'scripts')
         if os.path.exists(script_dir):
             for script in os.listdir(script_dir):
-                if script.lower() == 'readme.md':  # Skip readme.md files
+                # Skip files in the ignored_files list
+                if script.lower() in ignored_files:
                     continue
                 with open(os.path.join(script_dir, script), 'r') as file:
                     # Strip comments and add layer/script info
