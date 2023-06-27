@@ -42,22 +42,22 @@ osconfiglib also includes a CLI tool to manage your layers. Here are some exampl
 
 ```bash
 # List all layers
-$ osconfiglib-cli list layers
+$ osconfiglib list layers
 
 # Check version
-$ osconfiglib-cli --version
+$ osconfiglib --version
 
 # Add RPM to a layer
-$ osconfiglib-cli add rpm mylayer tmux
+$ osconfiglib add rpm mylayer tmux
 
 # Add a file to a layer
-$ osconfiglib-cli add file mylayer ~/.tmux.conf /home/user
+$ osconfiglib add file mylayer ~/.tmux.conf /home/user
 
 # Create a new layer
-$ osconfiglib-cli create layer newLayer
+$ osconfiglib create layer newLayer
 
 # Delete a layer
-$ osconfiglib-cli delete layer <layer>
+$ osconfiglib delete layer <layer>
 ```
 
 ## Repository Structure
