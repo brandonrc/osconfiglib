@@ -40,6 +40,14 @@ def download_rpm_packages(package_list, download_dir):
     
     :param package_list: A list of package names to download.
     :param download_dir: The directory where packages will be downloaded.
+
+
+    example:
+        package_list = ["tmux", "firefox"]
+        download_dir = "/tmp/repo"
+
+        package_handler.download_rpm_packages(package_list, download_dir)
+
     """
     # Ensure the download directory exists
     os.makedirs(download_dir, exist_ok=True)
