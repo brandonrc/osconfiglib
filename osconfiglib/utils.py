@@ -3,6 +3,7 @@
 import os
 import shutil
 import platform
+import subprocess
 
 def check_package_availability(package_name):
     """
