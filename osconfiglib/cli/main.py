@@ -1,6 +1,6 @@
 # osconfiglib/cli/main.py
 import click
-from osconfiglib import layers, utils, virt_customize
+from osconfiglib import layers, utils, virt_customize, package_handler
 
 @click.group()
 def cli():
@@ -76,6 +76,17 @@ def export_squashed_configs(recipe,output_dir):
     click.echo(f'Squashing configs for {recipe} and saving them to {output_dir}.')
     layers.toml_export(recipe,output_dir)
 cli.add_command(export_squashed_configs, name='export-squashed-configs')
+
+
+@click.command()
+@click.argument('recipe')
+@click.argument('output_dir')
+@click.argument('qcow2_path')
+def export_upgrade(recipe,output_dir,qcow2_path):
+    # Here you would call the functionality that deletes a layer
+    click.echo(f'Squashing configs for {recipe} and saving them to {output_dir}.')
+    layers.toml_upgrade(recipe,output_dir, qcow2_path)
+cli.add_command(export_upgrade, name='export-upgrade')
 
 if __name__ == '__main__':
     cli()

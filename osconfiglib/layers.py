@@ -10,7 +10,7 @@ import urllib.parse
 from pathlib import Path
 from shutil import copy2
 from urllib.parse import urlparse
-import package_handler
+from osconfiglib import package_handler
 
 import toml
 
@@ -435,7 +435,7 @@ def export_squashed_layer(squashed_layer, output_file, tmp_dir):
     """
     with tempfile.TemporaryDirectory() as temp_dir:
         # Download RPMs to the temporary directory
-        package_handler.download_packages(squash_layers['rpm_requirements'],temp_dir)
+        package_handler.download_packages(squashed_layer['rpm_requirements'],temp_dir)
 
         with tarfile.open(output_file, "w:gz") as tar:
             # Add configs to the tarball
