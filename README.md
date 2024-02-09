@@ -74,9 +74,9 @@ my-build/
 │   └── usr/local/bin
 │       └── symlink-to-something
 ├── package-lists/
-│   ├── rpms.txt
-│   ├── deps.txt
-│   └── python.txt
+│   ├── rpm-requirements.txt
+│   ├── dep-requirements.txt
+│   └── pip-requirements.txt
 └── scripts/
     ├── 01-first-script-to-run.sh
     └── 02-second-script-to-run.sh

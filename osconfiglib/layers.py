@@ -379,9 +379,9 @@ def squash_layers(layers, tmp_dir):
         layer_path = layer['path']  # Assumes 'layer' is a dictionary with a 'path' key
 
         # Append requirements to the lists
-        squashed_layer['rpm_requirements'] += get_requirements_files(layer_path, 'rpms.txt')
-        squashed_layer['deb_requirements'] += get_requirements_files(layer_path, 'debs.txt')
-        squashed_layer['pip_requirements'] += get_requirements_files(layer_path, 'python.txt')
+        squashed_layer['rpm_requirements'] += get_requirements_files(layer_path, 'rpm-requirements.txt')
+        squashed_layer['deb_requirements'] += get_requirements_files(layer_path, 'deb-requirements.txt')
+        squashed_layer['pip_requirements'] += get_requirements_files(layer_path, 'pip-requirements.txt')
 
         # Merge configs into the squashed layer
         layer_configs_dir = os.path.join(layer_path, 'configs')
