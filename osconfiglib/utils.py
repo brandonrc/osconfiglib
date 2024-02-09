@@ -2,6 +2,51 @@
 
 import os
 import shutil
+import platform
+
+def check_package_availability(package_name):
+    """
+    Check if a package is available in the system.
+
+    Args:
+        package_name (str): Name of the package to check.
+
+    Returns:
+        bool: True if the package is available, False otherwise.
+    """
+    # Check the platform to determine the package manager
+    if platform.system() in ['Linux']:
+        # Check for RHEL/CentOS/Fedora
+        if os.path.exists('/etc/redhat-release'):
+            cmd = ['rpm', '-q', package_name]
+        # Check for Ubuntu/Debian
+        elif os.path.exists('/etc/debian_version'):
+            cmd = ['dpkg', '-l', package_name]
+        else:
+            # Unsupported Linux distribution
+            raise NotImplementedError("Unsupported Linux distribution.")
+        
+        # Run the command to check package availability
+        try:
+            subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            return True
+        except subprocess.CalledProcessError:
+            return False
+    else:
+        raise NotImplementedError("Unsupported operating system.")
+
+def check_and_install_package(package_name):
+    """
+    Check if a package is available and install it if necessary.
+
+    Args:
+        package_name (str): Name of the package to check and install.
+    """
+    if not check_package_availability(package_name):
+        raise RuntimeError(f"The package '{package_name}' is not available on this system.")
+
+    # If the package is available, no further action is needed
+
 
 def check_dependencies():
     """

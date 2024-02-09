@@ -4,6 +4,8 @@ import os
 import subprocess
 import tempfile
 import tarfile
+import platform
+import shutil
 from osconfiglib import layers
 import toml
 
@@ -17,37 +19,49 @@ def apply_squashed_layer(base_image, squashed_layer, output_image, python_versio
         output_image (str): Path to the output image file
         python_version (str): Python version used for virtual environment. If none then python3 is used
     """
-    # Use a temporary file for the tarball
-    with tempfile.NamedTemporaryFile(suffix=".tar.gz") as temp_file:
-        with tarfile.open(temp_file.name, "w:gz") as tar:
-            # Add configs to the tarball
+    # Use a temporary directory for storing temporary files
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create a tarball containing the configs
+        tarball_path = os.path.join(temp_dir, "squashed_layer.tar.gz")
+        with tarfile.open(tarball_path, "w:gz") as tar:
             for config in squashed_layer['configs']:
-                tar.add(config)
+                tar.add(config, arcname=os.path.basename(config))
 
-        # Upload the tarball and extract it in the base image
-        subprocess.run(['virt-customize', '-a', base_image, '--upload', f'{temp_file.name}:/'])
-        subprocess.run(['virt-customize', '-a', base_image, '--run-command', f'tar xzf /{os.path.basename(temp_file.name)} -C /'])
+        # Write the squashed script into a temporary file
+        script_path = os.path.join(temp_dir, "squashed_script.sh")
+        with open(script_path, 'w') as script_file:
+            script_file.write(squashed_layer['squash_script'])
 
-    # Write the squashed script into the base image
-    with tempfile.NamedTemporaryFile(suffix=".sh") as temp_script:
-        with open(temp_script.name, 'w') as file:
-            file.write(squashed_layer['squash_script'])
-        subprocess.run(['virt-customize', '-a', base_image, '--upload', f'{temp_script.name}:/opt/squashed_script.sh'])
-        subprocess.run(['virt-customize', '-a', base_image, '--run-command', 'chmod +x /opt/squashed_script.sh'])
-        subprocess.run(['virt-customize', '-a', base_image, '--run-command', '/opt/squashed_script.sh'])
+        shutil.copyfile(base_image, output_image)
 
-    # Install rpm and deb packages, and pip requirements in the base image
-    if squashed_layer['rpm_requirements']:
-        subprocess.run(['virt-customize', '-a', base_image, '--run-command', f'dnf install -y --nogpgcheck --allowerasing{" ".join(squashed_layer["rpm_requirements"])}'])
-    if squashed_layer['deb_requirements']:
-        subprocess.run(['virt-customize', '-a', base_image, '--run-command', f'apt-get install -y {" ".join(squashed_layer["deb_requirements"])}'])
-    if squashed_layer['pip_requirements']:
-        subprocess.run(['virt-customize', '-a', base_image, '--run-command', f'{python_version} -m venv /opt/os-python-venv'])
-        subprocess.run(['virt-customize', '-a', base_image, '--run-command', f'source /opt/os-python-venv/bin/activate && pip install {" ".join(squashed_layer["pip_requirements"])}'])
-        subprocess.run(['virt-customize', '-a', base_image, '--run-command', 'chmod -R 777 /opt/os-python-venv'])
+        # Construct the virt-customize command
+        command = [
+            'virt-customize', '-a', output_image,
+            '--upload', f'{tarball_path}:/squashed_layer.tar.gz',
+            '--run-command', f'tar xzf /squashed_layer.tar.gz -C /',
+            '--upload', f'{script_path}:/opt/squashed_script.sh',
+            '--run-command', 'chmod +x /opt/squashed_script.sh',
+            '--run-command', '/opt/squashed_script.sh'
+        ]
 
-    # Copy the base image to the output image
-    subprocess.run(['cp', base_image, output_image])
+        if squashed_layer['rpm_requirements']:
+            command.append('--run-command')
+            command.append('bash -c "if [ -f /etc/redhat-release ]; then dnf install -y --nogpgcheck --allowerasing ' + ' '.join(squashed_layer["rpm_requirements"]) + '; fi"')
+        elif squashed_layer['deb_requirements']:
+            command.append('--run-command')
+            command.append('bash -c "if [ -f /etc/debian_version ]; then apt-get install -y ' + ' '.join(squashed_layer["deb_requirements"]) + '; fi"')
+
+        # Install pip requirements in the copied image
+        if squashed_layer['pip_requirements']:
+            command.append('--run-command')
+            command.append(f'{python_version} -m venv /opt/os-python-venv && source /opt/os-python-venv/bin/activate && pip install {" ".join(squashed_layer["pip_requirements"])}')
+            command.append('--run-command')
+            command.append('chmod -R 777 /opt/os-python-venv')
+
+        # Run the virt-customize command
+        subprocess.run(command)
+
+    print("Layers applied successfully.")
 
 
 def toml_apply(toml_file_path, base_image, output_image, python_version="python3"):
