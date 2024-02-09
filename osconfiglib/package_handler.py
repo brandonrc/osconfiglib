@@ -110,8 +110,8 @@ def extract_packages_qcow2(image_path):
         
         # Check for RPM or DEB system by attempting to list installed packages
         try:
-            rpm_output = subprocess.check_output(['chroot', mount_point, 'rpm', '-qa'], universal_newlines=True)
-            package_list = rpm_output.strip().split('\n')
+            rpm_output = subprocess.check_output(['chroot', mount_point, 'rpm', '-qa', '--queryformat', '%{NAME}\n'], universal_newlines=True)
+            package_list = [line for line in rpm_output.strip().split('\n') if not line.startswith('gpg-pubkey')]
             package_type = 'rpm'
         except subprocess.CalledProcessError:
             dpkg_output = subprocess.check_output(['chroot', mount_point, 'dpkg', '-l'], universal_newlines=True)
@@ -122,8 +122,10 @@ def extract_packages_qcow2(image_path):
             package_type = 'deb'
     finally:
         subprocess.run(['guestunmount', mount_point], check=True)
-    
-    return package_list, package_type
+
+    # TODO: is it important to have package type returns? 
+    # return package_list, package_type
+    return package_list
 
 
 def create_repo(package_dir, package_type):
