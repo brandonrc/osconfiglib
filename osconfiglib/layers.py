@@ -10,6 +10,7 @@ import urllib.parse
 from pathlib import Path
 from shutil import copy2
 from urllib.parse import urlparse
+import package_handler
 
 import toml
 
@@ -354,7 +355,7 @@ def tar_configs(configs_path):
     shutil.rmtree(configs_path)  # delete the configs directory
     return output_tarball_file
 
-def squash_layers(layers, tmp_dir):
+def squash_layers(layers, tmp_dir, image_path=None):
     """
     Combine multiple layers into a single layer (squashed layer).
 
@@ -415,6 +416,9 @@ def squash_layers(layers, tmp_dir):
                     squashed_layer['squash_script'] += stripped_script + "\n}\n"
                     squashed_layer['squash_script'] += f"{layer['name']}_{script.replace('.', '_')}\n"
 
+    if image_path:
+        squashed_layer['rpm_requirements']  += package_handler.extract_packages_qcow2(image_path)
+
     tar_location = tar_configs(merged_configs_dir)
     squashed_layer['configs'] = tar_location  # Now 'configs' contains the path to the merged configs directory
 
@@ -429,22 +433,29 @@ def export_squashed_layer(squashed_layer, output_file, tmp_dir):
         output_file (str): Path to the output tarball file
         tmp_dir (str): Path to the temporary directory
     """
-    with tarfile.open(output_file, "w:gz") as tar:
-        # Add configs to the tarball
-        tar.add(squashed_layer['configs'], arcname="configs.tar.gz")
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Download RPMs to the temporary directory
+        package_handler.download_packages(squash_layers['rpm_requirements'],temp_dir)
 
-        # Add requirements to the tarball
-        for requirements in ['rpm_requirements', 'deb_requirements', 'pip_requirements']:
-            with tempfile.NamedTemporaryFile(suffix=".txt") as temp_requirements:
-                with open(temp_requirements.name, 'w') as file:
-                    file.write("\n".join(squashed_layer[requirements]))
-                tar.add(temp_requirements.name, arcname=f"{requirements}.txt")
+        with tarfile.open(output_file, "w:gz") as tar:
+            # Add configs to the tarball
+            tar.add(squashed_layer['configs'], arcname="configs.tar.gz")
 
-        # Add the squashed script to the tarball
-        with tempfile.NamedTemporaryFile(suffix=".sh") as temp_script:
-            with open(temp_script.name, 'w') as file:
-                file.write(squashed_layer['squash_script'])
-            tar.add(temp_script.name, arcname="squash_script.sh")
+            # Add requirements to the tarball
+            for requirements in ['rpm_requirements', 'deb_requirements', 'pip_requirements']:
+                with tempfile.NamedTemporaryFile(suffix=".txt") as temp_requirements:
+                    with open(temp_requirements.name, 'w') as file:
+                        file.write("\n".join(squashed_layer[requirements]))
+                    tar.add(temp_requirements.name, arcname=f"{requirements}.txt")
+
+            # Add the squashed script to the tarball
+            with tempfile.NamedTemporaryFile(suffix=".sh") as temp_script:
+                with open(temp_script.name, 'w') as file:
+                    file.write(squashed_layer['squash_script'])
+                tar.add(temp_script.name, arcname="squash_script.sh")
+            
+            # Add RPM directory to the tarball
+            tar.add(temp_dir, arcname="rpms")
 
 
 def generate_tarball_filename(name, version):
@@ -496,6 +507,53 @@ def toml_export(toml_file_path, output_dir):
     with tempfile.TemporaryDirectory() as tmp_dir:
         # Iterate over the layers in the TOML file and squash them
         squashed_layers = squash_layers(data['layer'], tmp_dir)
+
+        filename = generate_tarball_filename(data['name'], data['version'])
+
+        output_file = os.path.join(output_dir, filename)
+
+        # Export the squashed layer
+        export_squashed_layer(squashed_layers, output_file, tmp_dir)
+    print("Layers exported successfully.")
+
+
+
+def toml_upgrade(toml_file_path, output_dir, image_path):
+    """
+    Exports layers specified in a TOML file.
+
+    Args:
+        toml_file_path (str): Path to the TOML file.
+        output_dir (str): Path to the output file where the squashed layer will be exported.
+    """
+
+    # Convert input paths to absolute paths
+    toml_file_path = os.path.abspath(toml_file_path)
+    output_dir = os.path.abspath(output_dir)
+
+    if not os.path.isfile(toml_file_path):
+        print(f"File not found: {toml_file_path}")
+        return
+
+    if not toml_check(toml_file_path):
+        print(f"Invalid TOML file: {toml_file_path}")
+        return
+
+    # Load and parse the TOML file
+    with open(toml_file_path, 'r') as file:
+        # Print the content of the file for debugging
+        content = file.read()
+        print(f"Content of the file {toml_file_path}:\n{content}")
+
+        data = toml.loads(content)  # Use loads() instead of load()
+
+    if not import_layers(data):
+        print(f"Failed to import layers from {toml}")
+        return
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        # Iterate over the layers in the TOML file and squash them
+        squashed_layers = squash_layers(data['layer'], tmp_dir, image_path)
 
         filename = generate_tarball_filename(data['name'], data['version'])
 
