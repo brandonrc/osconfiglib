@@ -3,3 +3,4 @@ dist/
 __pycache__
 *.tar.gz
 .idea/
+osconfiglib/test.py
